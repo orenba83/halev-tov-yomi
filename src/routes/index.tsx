@@ -47,13 +47,14 @@ function Dashboard() {
   );
   const trend =
     weightData.length > 1
-      ? +(weightData[weightData.length - 1].value - weightData[0].value).toFixed(1)
+      ? +((weightData.at(-1)?.value ?? 0) - (weightData[0]?.value ?? 0)).toFixed(1)
       : 0;
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "בוקר טוב" : hour < 18 ? "צהריים טובים" : "ערב טוב";
   const nextMeal =
-    MEALS.find((m) => !state.entries.some((e) => e.date === date && e.meal === m.key)) ?? MEALS[3];
+    MEALS.find((m) => !state.entries.some((e) => e.date === date && e.meal === m.key)) ??
+    MEALS[3]!;
 
   return (
     <div className="space-y-4">
