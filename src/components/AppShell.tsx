@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl px-4 pt-5 pb-32 md:pb-24">{children}</main>
+      <main className="mx-auto w-full max-w-5xl px-4 pt-5 pb-44 md:pb-28">{children}</main>
 
       <FabMenu />
 
