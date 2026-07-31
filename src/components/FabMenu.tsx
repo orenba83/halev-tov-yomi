@@ -143,11 +143,12 @@ export function MeasureDialog({
     }
     actions.addMeasurement({
       date: todayKey(),
-      waist: nums[0],
-      chest: nums[1],
-      arm: nums[2],
-      thigh: nums[3],
+      waist: Number(f.waist || 0),
+      chest: Number(f.chest || 0),
+      arm: Number(f.arm || 0),
+      thigh: Number(f.thigh || 0),
     });
+
     toast.success("המדידות נשמרו");
     setF({ waist: "", chest: "", arm: "", thigh: "" });
     onOpenChange(false);
