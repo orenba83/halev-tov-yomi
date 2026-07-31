@@ -17,7 +17,7 @@ export const Route = createFileRoute("/progress")({
       { property: "og:description", content: "גרף משקל, היקפי גוף והיסטוריית מדידות." },
     ],
   }),
-  component: Progress;
+  component: Progress,
 });
 
 const RANGES = [
