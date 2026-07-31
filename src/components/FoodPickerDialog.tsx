@@ -84,7 +84,10 @@ export function FoodPickerDialog({
   const addPicked = () => {
     if (!selected) return;
     const g = Number(grams);
-    if (!Number.isFinite(g) || g <= 0) return toast.error("יש להזין כמות חיובית בגרמים");
+    if (!Number.isFinite(g) || g <= 0) {
+      toast.error("יש להזין כמות חיובית בגרמים");
+      return;
+    }
     actions.addEntry({ date: dateToday(), meal, ...scale(selected, g) });
     actions.pushRecent(selected.id);
     toast.success(`${selected.name} נוסף ליומן`);
@@ -96,10 +99,18 @@ export function FoodPickerDialog({
     const p = Number(manual.protein || 0);
     const c = Number(manual.carbs || 0);
     const f = Number(manual.fat || 0);
-    if (!manual.name.trim()) return toast.error("יש להזין שם מוצר");
-    if (!Number.isFinite(cal) || cal <= 0) return toast.error("יש להזין קלוריות חיוביות");
-    if ([p, c, f].some((v) => !Number.isFinite(v) || v < 0))
-      return toast.error("ערכי מאקרו לא יכולים להיות שליליים");
+    if (!manual.name.trim()) {
+      toast.error("יש להזין שם מוצר");
+      return;
+    }
+    if (!Number.isFinite(cal) || cal <= 0) {
+      toast.error("יש להזין קלוריות חיוביות");
+      return;
+    }
+    if ([p, c, f].some((v) => !Number.isFinite(v) || v < 0)) {
+      toast.error("ערכי מאקרו לא יכולים להיות שליליים");
+      return;
+    }
     const food = actions.addCustomFood({
       name: manual.name.trim(),
       calories: cal,
