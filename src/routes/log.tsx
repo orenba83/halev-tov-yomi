@@ -157,13 +157,13 @@ function WaterTracker({ date }: { date: string }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" className="rounded-full" onClick={() => actions.addWater(date, 250)}>
-          +250 מ״ל
+          <span dir="ltr">+250</span> מ״ל
         </Button>
         <Button variant="outline" className="rounded-full" onClick={() => actions.addWater(date, 500)}>
-          +500 מ״ל
+          <span dir="ltr">+500</span> מ״ל
         </Button>
         <Button variant="ghost" className="rounded-full" onClick={() => actions.addWater(date, -250)}>
-          -250 מ״ל
+          <span dir="ltr">-250</span> מ״ל
         </Button>
       </div>
 

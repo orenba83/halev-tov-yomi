@@ -111,7 +111,7 @@ function Dashboard() {
             className="shrink-0 rounded-full"
             onClick={() => actions.setSteps(date, steps + 1000)}
           >
-            +1000
+            <span dir="ltr">+1000</span>
           </Button>
         </Card>
 
