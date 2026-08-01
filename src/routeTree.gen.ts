@@ -14,6 +14,8 @@ import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as WaterRouteImport } from './routes/water'
+import { Route as MealMealRouteImport } from './routes/meal.$meal'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +42,16 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WaterRoute = WaterRouteImport.update({
+  id: '/water',
+  path: '/water',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MealMealRoute = MealMealRouteImport.update({
+  id: '/meal/$meal',
+  path: '/meal/$meal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +59,8 @@ export interface FileRoutesByFullPath {
   '/log': typeof LogRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
+  '/water': typeof WaterRoute
+  '/meal/$meal': typeof MealMealRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +68,8 @@ export interface FileRoutesByTo {
   '/log': typeof LogRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
+  '/water': typeof WaterRoute
+  '/meal/$meal': typeof MealMealRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +78,37 @@ export interface FileRoutesById {
   '/log': typeof LogRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
+  '/water': typeof WaterRoute
+  '/meal/$meal': typeof MealMealRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/advisor' | '/log' | '/progress' | '/settings'
+  fullPaths:
+    | '/'
+    | '/advisor'
+    | '/log'
+    | '/progress'
+    | '/settings'
+    | '/water'
+    | '/meal/$meal'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/advisor' | '/log' | '/progress' | '/settings'
-  id: '__root__' | '/' | '/advisor' | '/log' | '/progress' | '/settings'
+  to:
+    | '/'
+    | '/advisor'
+    | '/log'
+    | '/progress'
+    | '/settings'
+    | '/water'
+    | '/meal/$meal'
+  id:
+    | '__root__'
+    | '/'
+    | '/advisor'
+    | '/log'
+    | '/progress'
+    | '/settings'
+    | '/water'
+    | '/meal/$meal'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +117,8 @@ export interface RootRouteChildren {
   LogRoute: typeof LogRoute
   ProgressRoute: typeof ProgressRoute
   SettingsRoute: typeof SettingsRoute
+  WaterRoute: typeof WaterRoute
+  MealMealRoute: typeof MealMealRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +158,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/water': {
+      id: '/water'
+      path: '/water'
+      fullPath: '/water'
+      preLoaderRoute: typeof WaterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meal/$meal': {
+      id: '/meal/$meal'
+      path: '/meal/$meal'
+      fullPath: '/meal/$meal'
+      preLoaderRoute: typeof MealMealRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +181,8 @@ const rootRouteChildren: RootRouteChildren = {
   LogRoute: LogRoute,
   ProgressRoute: ProgressRoute,
   SettingsRoute: SettingsRoute,
+  WaterRoute: WaterRoute,
+  MealMealRoute: MealMealRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { Plus, Ruler, Scale, UtensilsCrossed, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Footprints, Plus, Ruler, Scale, UtensilsCrossed, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { actions, todayKey } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import type { MealKey } from "@/lib/types";
+import { MEASURE_FIELDS, type MeasurementEntry, type MealKey, type WeightEntry } from "@/lib/types";
 import { FoodPickerDialog, NumField } from "./FoodPickerDialog";
 
 export function FabMenu() {
@@ -16,30 +16,9 @@ export function FabMenu() {
   const [measure, setMeasure] = useState(false);
 
   const items = [
-    {
-      icon: UtensilsCrossed,
-      label: "ארוחה / מוצר",
-      onClick: () => {
-        setOpen(false);
-        setFood(true);
-      },
-    },
-    {
-      icon: Scale,
-      label: "שקילה",
-      onClick: () => {
-        setOpen(false);
-        setWeight(true);
-      },
-    },
-    {
-      icon: Ruler,
-      label: "מדידת היקפים",
-      onClick: () => {
-        setOpen(false);
-        setMeasure(true);
-      },
-    },
+    { icon: UtensilsCrossed, label: "ארוחה / מוצר", onClick: () => (setOpen(false), setFood(true)) },
+    { icon: Scale, label: "שקילה", onClick: () => (setOpen(false), setWeight(true)) },
+    { icon: Ruler, label: "מדידת היקפים", onClick: () => (setOpen(false), setMeasure(true)) },
   ];
 
   return (
@@ -78,12 +57,21 @@ export function FabMenu() {
 export function WeightDialog({
   open,
   onOpenChange,
+  edit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  edit?: WeightEntry | null | undefined;
 }) {
   const [value, setValue] = useState("");
   const [date, setDate] = useState(todayKey());
+
+  useEffect(() => {
+    if (open) {
+      setValue(edit ? String(edit.value) : "");
+      setDate(edit ? edit.date : todayKey());
+    }
+  }, [open, edit]);
 
   const save = () => {
     const v = Number(value);
@@ -91,9 +79,9 @@ export function WeightDialog({
       toast.error("יש להזין משקל חיובי");
       return;
     }
-    actions.addWeight(date, +v.toFixed(1));
+    if (edit) actions.updateWeight(edit.id, { value: +v.toFixed(1), date });
+    else actions.addWeight(date, +v.toFixed(1));
     toast.success("המשקל נשמר");
-    setValue("");
     onOpenChange(false);
   };
 
@@ -101,20 +89,11 @@ export function WeightDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="text-right sm:max-w-sm">
         <DialogHeader className="text-right">
-          <DialogTitle>הוספת שקילה</DialogTitle>
+          <DialogTitle>{edit ? "עריכת שקילה" : "הוספת שקילה"}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3">
           <NumField label="משקל (ק״ג) *" value={value} onChange={setValue} step="0.1" />
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium">תאריך</label>
-            <input
-              type="date"
-              value={date}
-              max={todayKey()}
-              onChange={(e) => setDate(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-            />
-          </div>
+          <DateField value={date} onChange={setDate} />
           <Button onClick={save}>שמירה</Button>
         </div>
       </DialogContent>
@@ -125,14 +104,25 @@ export function WeightDialog({
 export function MeasureDialog({
   open,
   onOpenChange,
+  edit,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  edit?: MeasurementEntry | null | undefined;
 }) {
-  const [f, setF] = useState({ waist: "", chest: "", arm: "", thigh: "" });
+  const [f, setF] = useState<Record<string, string>>({});
+  const [date, setDate] = useState(todayKey());
+
+  useEffect(() => {
+    if (!open) return;
+    const init: Record<string, string> = {};
+    MEASURE_FIELDS.forEach((m) => (init[m.key] = edit ? String(edit[m.key] ?? "") : ""));
+    setF(init);
+    setDate(edit ? edit.date : todayKey());
+  }, [open, edit]);
 
   const save = () => {
-    const nums = Object.values(f).map((v) => Number(v || 0));
+    const nums = MEASURE_FIELDS.map((m) => Number(f[m.key] || 0));
     if (nums.some((n) => !Number.isFinite(n) || n < 0)) {
       toast.error("ערכים לא יכולים להיות שליליים");
       return;
@@ -141,16 +131,17 @@ export function MeasureDialog({
       toast.error("יש למלא לפחות מדידה אחת");
       return;
     }
-    actions.addMeasurement({
-      date: todayKey(),
-      waist: Number(f.waist || 0),
-      chest: Number(f.chest || 0),
-      arm: Number(f.arm || 0),
-      thigh: Number(f.thigh || 0),
-    });
-
+    const payload = {
+      date,
+      waist: Number(f["waist"] || 0),
+      chest: Number(f["chest"] || 0),
+      arm: Number(f["arm"] || 0),
+      thigh: Number(f["thigh"] || 0),
+      hips: Number(f["hips"] || 0),
+    };
+    if (edit) actions.updateMeasurement(edit.id, payload);
+    else actions.addMeasurement(payload);
     toast.success("המדידות נשמרו");
-    setF({ waist: "", chest: "", arm: "", thigh: "" });
     onOpenChange(false);
   };
 
@@ -158,16 +149,83 @@ export function MeasureDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="text-right sm:max-w-sm">
         <DialogHeader className="text-right">
-          <DialogTitle>מדידת היקפים (ס״מ)</DialogTitle>
+          <DialogTitle>{edit ? "עריכת היקפים" : "מדידת היקפים"} (ס״מ)</DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
-          <NumField label="מותניים" value={f.waist} onChange={(v) => setF({ ...f, waist: v })} step="0.1" />
-          <NumField label="חזה" value={f.chest} onChange={(v) => setF({ ...f, chest: v })} step="0.1" />
-          <NumField label="יד" value={f.arm} onChange={(v) => setF({ ...f, arm: v })} step="0.1" />
-          <NumField label="ירך" value={f.thigh} onChange={(v) => setF({ ...f, thigh: v })} step="0.1" />
+          {MEASURE_FIELDS.map((m) => (
+            <NumField
+              key={m.key}
+              label={m.label}
+              value={f[m.key] ?? ""}
+              onChange={(v) => setF({ ...f, [m.key]: v })}
+              step="0.1"
+            />
+          ))}
+          <DateField value={date} onChange={setDate} />
         </div>
         <Button onClick={save}>שמירה</Button>
       </DialogContent>
     </Dialog>
+  );
+}
+
+export function StepsDialog({
+  open,
+  onOpenChange,
+  date: initial,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  date?: string | undefined;
+}) {
+  const [value, setValue] = useState("");
+  const [date, setDate] = useState(initial ?? todayKey());
+
+  useEffect(() => {
+    if (open) setDate(initial ?? todayKey());
+  }, [open, initial]);
+
+  const save = () => {
+    const v = Number(value);
+    if (!Number.isFinite(v) || v < 0) {
+      toast.error("יש להזין מספר צעדים תקין");
+      return;
+    }
+    actions.setSteps(date, Math.round(v));
+    toast.success("הצעדים נשמרו");
+    setValue("");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="text-right sm:max-w-sm">
+        <DialogHeader className="text-right">
+          <DialogTitle className="flex items-center gap-2">
+            <Footprints className="size-5 text-primary" /> עדכון צעדים
+          </DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <NumField label="מספר צעדים" value={value} onChange={setValue} step="100" />
+          <DateField value={date} onChange={setDate} />
+          <Button onClick={save}>שמירה</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DateField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-medium">תאריך</label>
+      <input
+        type="date"
+        value={value}
+        max={todayKey()}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+      />
+    </div>
   );
 }
