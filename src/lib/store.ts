@@ -7,10 +7,11 @@ import type {
   LogEntry,
   MeasurementEntry,
   Settings,
+  WaterEntry,
   WeightEntry,
 } from "./types";
 
-const KEY = "fitrack-state-v1";
+const KEY = "fitrack-state-v2";
 
 export const todayKey = () => toKey(new Date());
 export const toKey = (d: Date) =>
@@ -18,19 +19,27 @@ export const toKey = (d: Date) =>
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
+/** מספר ימי שמירה */
+export const KEEP_DAYS = 90;
+export const KEEP_DAYS_LONG = 183;
+
+const daysAgo = (key: string) =>
+  Math.floor((Date.now() - new Date(key + "T00:00:00").getTime()) / 86400000);
+
 function seed(): AppState {
   const now = new Date();
   const dayAgo = (n: number) => toKey(new Date(now.getTime() - n * 86400000));
   const weights: WeightEntry[] = [8, 6, 4, 2, 0].map((n, i) => ({
-    id: uid(),
+    id: `w${i}`,
     date: dayAgo(n),
-    value: 78.4 - i * 0.35,
+    value: +(78.4 - i * 0.35).toFixed(1),
   }));
+  const stepSeed = [8200, 6400, 9100, 7300, 10400, 5200, 8800, 7600, 9900, 6019];
   const steps: Record<string, number> = {};
-  for (let i = 0; i < 10; i++) steps[dayAgo(i)] = 4200 + Math.round(Math.random() * 5200);
+  stepSeed.forEach((v, i) => (steps[dayAgo(i)] = v));
   return {
     settings: {
-      name: "אלוף",
+      name: "דנה",
       calorieGoal: 2200,
       stepGoal: 10000,
       waterGoal: 2500,
@@ -41,7 +50,7 @@ function seed(): AppState {
     },
     entries: [
       {
-        id: uid(),
+        id: "e1",
         date: todayKey(),
         meal: "breakfast",
         name: "שיבולת שועל",
@@ -52,7 +61,7 @@ function seed(): AppState {
         fat: 4.2,
       },
       {
-        id: uid(),
+        id: "e2",
         date: todayKey(),
         meal: "breakfast",
         name: "יוגורט יווני 0%",
@@ -63,7 +72,7 @@ function seed(): AppState {
         fat: 0.6,
       },
       {
-        id: uid(),
+        id: "e3",
         date: todayKey(),
         meal: "lunch",
         name: "חזה עוף בגריל",
@@ -74,24 +83,53 @@ function seed(): AppState {
         fat: 6.5,
       },
     ],
-    water: { [todayKey()]: 750 },
+    water: [
+      { id: "wa1", date: todayKey(), ml: 500 },
+      { id: "wa2", date: todayKey(), ml: 250 },
+    ],
     steps,
     weights,
     measurements: [
-      { id: uid(), date: dayAgo(7), waist: 86, chest: 102, arm: 35, thigh: 58 },
-      { id: uid(), date: todayKey(), waist: 84.5, chest: 102.5, arm: 35.4, thigh: 58 },
+      { id: "m1", date: dayAgo(7), waist: 86, chest: 102, arm: 35, thigh: 58, hips: 96 },
+      { id: "m2", date: todayKey(), waist: 84.5, chest: 102.5, arm: 35.4, thigh: 58, hips: 95.2 },
     ],
     customFoods: [],
     recent: ["g1", "g6", "g18", "g9"],
     favorites: ["g1"],
     chat: [
       {
-        id: uid(),
+        id: "c1",
         role: "ai",
-        text: "שלום! אני היועץ התזונתי החכם שלך. אפשר לשאול אותי כל שאלה על תזונה, אימונים או להעלות תמונה של מוצר לסריקה.",
+        text: "שלום! אני היועץ התזונתי החכם שלך. אפשר לשאול אותי כל שאלה על תזונה או אימונים, לדבר איתי בקול, או להעלות תמונה של מנה/מוצר ואזהה עבורך את הערכים.",
       },
     ],
   };
+}
+
+/** מנקה נתונים ישנים: יומן/מים/צעדים עד 3 חודשים, משקל והיקפים עד חצי שנה */
+function prune(s: AppState): AppState {
+  return {
+    ...s,
+    entries: s.entries.filter((e) => daysAgo(e.date) <= KEEP_DAYS),
+    water: s.water.filter((w) => daysAgo(w.date) <= KEEP_DAYS),
+    steps: Object.fromEntries(Object.entries(s.steps).filter(([d]) => daysAgo(d) <= KEEP_DAYS)),
+    weights: s.weights.filter((w) => daysAgo(w.date) <= KEEP_DAYS_LONG),
+    measurements: s.measurements.filter((m) => daysAgo(m.date) <= KEEP_DAYS_LONG),
+  };
+}
+
+function migrate(raw: any): AppState {
+  const base = seed();
+  const next: AppState = { ...base, ...raw, settings: { ...base.settings, ...(raw?.settings ?? {}) } };
+  if (raw?.water && !Array.isArray(raw.water)) {
+    next.water = Object.entries(raw.water as Record<string, number>).map(([date, ml]) => ({
+      id: uid(),
+      date,
+      ml: Number(ml) || 0,
+    }));
+  }
+  next.measurements = (next.measurements ?? []).map((m) => ({ ...m, hips: m.hips ?? 0 }));
+  return prune(next);
 }
 
 let state: AppState = seed();
@@ -103,7 +141,7 @@ function load() {
   loaded = true;
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (raw) state = { ...state, ...(JSON.parse(raw) as AppState) };
+    if (raw) state = migrate(JSON.parse(raw));
   } catch {
     /* ignore */
   }
@@ -151,10 +189,23 @@ export const actions = {
     set((s) => ({ ...s, entries: s.entries.filter((e) => e.id !== id) }));
   },
   addWater(date: string, ml: number) {
-    set((s) => ({ ...s, water: { ...s.water, [date]: Math.max(0, (s.water[date] ?? 0) + ml) } }));
+    set((s) => ({ ...s, water: [...s.water, { id: uid(), date, ml }] }));
+  },
+  updateWater(id: string, ml: number) {
+    set((s) => ({ ...s, water: s.water.map((w) => (w.id === id ? { ...w, ml } : w)) }));
+  },
+  deleteWater(id: string) {
+    set((s) => ({ ...s, water: s.water.filter((w) => w.id !== id) }));
   },
   setSteps(date: string, value: number) {
     set((s) => ({ ...s, steps: { ...s.steps, [date]: Math.max(0, value) } }));
+  },
+  deleteSteps(date: string) {
+    set((s) => {
+      const steps = { ...s.steps };
+      delete steps[date];
+      return { ...s, steps };
+    });
   },
   addWeight(date: string, value: number) {
     set((s) => ({
@@ -164,11 +215,28 @@ export const actions = {
       ),
     }));
   },
+  updateWeight(id: string, patch: Partial<WeightEntry>) {
+    set((s) => ({
+      ...s,
+      weights: s.weights
+        .map((w) => (w.id === id ? { ...w, ...patch } : w))
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    }));
+  },
   deleteWeight(id: string) {
     set((s) => ({ ...s, weights: s.weights.filter((w) => w.id !== id) }));
   },
   addMeasurement(m: Omit<MeasurementEntry, "id">) {
     set((s) => ({ ...s, measurements: [...s.measurements, { ...m, id: uid() }] }));
+  },
+  updateMeasurement(id: string, patch: Partial<MeasurementEntry>) {
+    set((s) => ({
+      ...s,
+      measurements: s.measurements.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+    }));
+  },
+  deleteMeasurement(id: string) {
+    set((s) => ({ ...s, measurements: s.measurements.filter((m) => m.id !== id) }));
   },
   addCustomFood(f: Omit<Food, "id">) {
     const food: Food = { ...f, id: uid(), custom: true };
@@ -190,13 +258,21 @@ export const actions = {
     set((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
   },
   addChat(msg: Omit<ChatMessage, "id">) {
-    set((s) => ({ ...s, chat: [...s.chat, { ...msg, id: uid() }] }));
+    const id = uid();
+    set((s) => ({ ...s, chat: [...s.chat, { ...msg, id }] }));
+    return id;
+  },
+  updateChat(id: string, patch: Partial<ChatMessage>) {
+    set((s) => ({ ...s, chat: s.chat.map((c) => (c.id === id ? { ...c, ...patch } : c)) }));
+  },
+  clearChat() {
+    set((s) => ({ ...s, chat: seed().chat }));
   },
   resetAll() {
     set(() => seed());
   },
   importState(next: AppState) {
-    set(() => next);
+    set(() => migrate(next));
   },
 };
 
@@ -218,6 +294,10 @@ export function dayTotals(s: AppState, date: string) {
     );
 }
 
+export function dayWater(s: AppState, date: string) {
+  return s.water.filter((w) => w.date === date).reduce((a, w) => a + w.ml, 0);
+}
+
 export const heDate = (key: string) =>
   new Date(key + "T00:00:00").toLocaleDateString("he-IL", {
     weekday: "long",
@@ -227,3 +307,26 @@ export const heDate = (key: string) =>
 
 export const heShort = (key: string) =>
   new Date(key + "T00:00:00").toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" });
+
+export const heWeekday = (key: string) =>
+  new Date(key + "T00:00:00").toLocaleDateString("he-IL", { weekday: "short" });
+
+/** תווית "יום בשבוע + תאריך" */
+export const heDayLabel = (key: string) =>
+  key === todayKey()
+    ? "היום"
+    : key === toKey(new Date(Date.now() - 86400000))
+      ? "אתמול"
+      : `יום ${heWeekday(key)} · ${heShort(key)}`;
+
+export const lastDays = (n: number, end = todayKey()) => {
+  const base = new Date(end + "T00:00:00").getTime();
+  return Array.from({ length: n }, (_, i) => toKey(new Date(base - (n - 1 - i) * 86400000)));
+};
+
+export function archiveOlderThan(s: AppState, days = KEEP_DAYS) {
+  return {
+    weights: s.weights.filter((w) => daysAgo(w.date) > days),
+    measurements: s.measurements.filter((m) => daysAgo(m.date) > days),
+  };
+}

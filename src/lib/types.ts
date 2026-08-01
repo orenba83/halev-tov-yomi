@@ -4,7 +4,7 @@ export const MEALS: { key: MealKey; label: string; time: string }[] = [
   { key: "breakfast", label: "ארוחת בוקר", time: "08:00" },
   { key: "lunch", label: "ארוחת צהריים", time: "13:00" },
   { key: "dinner", label: "ארוחת ערב", time: "19:00" },
-  { key: "snack", label: "חטיף / ביניים", time: "16:00" },
+  { key: "snack", label: "ארוחה רביעית / חטיף", time: "16:00" },
 ];
 
 export interface Food {
@@ -37,6 +37,22 @@ export interface WeightEntry {
   value: number;
 }
 
+export interface WaterEntry {
+  id: string;
+  date: string;
+  ml: number;
+}
+
+export const MEASURE_FIELDS = [
+  { key: "waist", label: "מותניים" },
+  { key: "chest", label: "חזה" },
+  { key: "arm", label: "יד" },
+  { key: "thigh", label: "ירך" },
+  { key: "hips", label: "אגן" },
+] as const;
+
+export type MeasureKey = (typeof MEASURE_FIELDS)[number]["key"];
+
 export interface MeasurementEntry {
   id: string;
   date: string;
@@ -44,12 +60,14 @@ export interface MeasurementEntry {
   chest: number;
   arm: number;
   thigh: number;
+  hips: number;
 }
 
 export interface ChatMessage {
   id: string;
   role: "user" | "ai";
   text: string;
+  image?: string;
 }
 
 export interface Settings {
@@ -66,7 +84,7 @@ export interface Settings {
 export interface AppState {
   settings: Settings;
   entries: LogEntry[];
-  water: Record<string, number>;
+  water: WaterEntry[];
   steps: Record<string, number>;
   weights: WeightEntry[];
   measurements: MeasurementEntry[];
