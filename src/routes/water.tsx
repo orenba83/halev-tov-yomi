@@ -112,7 +112,7 @@ function WaterScreen() {
           <div key={w.id} className="flex items-center gap-3 rounded-2xl bg-muted/50 px-3 py-2.5">
             <Droplets className="size-4 shrink-0 text-water" />
             <span className="flex-1 text-sm tabular-nums">{w.ml} מ״ל</span>
-            <span className="text-xs text-muted-foreground">{w.time}</span>
+            <span className="text-xs text-muted-foreground">רישום</span>
             <button onClick={() => setEditing(w)} aria-label="עריכה" className="text-muted-foreground hover:text-foreground">
               <Pencil className="size-4" />
             </button>
