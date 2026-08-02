@@ -158,9 +158,13 @@ export function AiFoodScanDialog({
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            {mode === "barcode" ? "סריקת ברקוד / תווית" : "צילום מנה או מוצר"}
+            {mode === "barcode" ? "סריקת תווית / ברקוד" : mode === "text" ? "תיאור בטקסט" : "צילום ארוחה"}
           </DialogTitle>
-          <DialogDescription>ה-AI יזהה מה בתמונה, תאשרו יחד את הערכים ואז נוסיף לארוחה</DialogDescription>
+          <DialogDescription>
+            {mode === "text"
+              ? "פרטו ככל האפשר את המנה כדי לקבל תוצאה מדויקת"
+              : "ה-AI יזהה מה בתמונה, תאשרו יחד את הערכים ואז נוסיף לארוחה"}
+          </DialogDescription>
         </DialogHeader>
 
         <input
@@ -172,19 +176,34 @@ export function AiFoodScanDialog({
           onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
         />
 
-        {!image ? (
+        {!image && !started ? (
           <div className="space-y-3">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="grid w-full place-items-center gap-2 rounded-3xl border-2 border-dashed border-border py-10 text-muted-foreground hover:bg-accent"
-            >
-              <Camera className="size-8 text-primary" />
-              <span className="text-sm font-medium">פתיחת מצלמה / בחירת תמונה</span>
-            </button>
+            {mode === "text" ? (
+              <>
+                <Input
+                  value={hint}
+                  onChange={(e) => setHint(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendHint()}
+                  placeholder="למשל: פיתה עם חומוס, ביצה קשה וסלט"
+                />
+                <Button className="w-full" onClick={sendHint} disabled={!hint.trim()}>
+                  <Sparkles className="size-4" /> חשב ערכים עם AI
+                </Button>
+              </>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="grid w-full place-items-center gap-2 rounded-3xl border-2 border-dashed border-border py-10 text-muted-foreground hover:bg-accent"
+              >
+                <Camera className="size-8 text-primary" />
+                <span className="text-sm font-medium">פתיחת מצלמה / בחירת תמונה</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            <img src={image} alt="התמונה שצולמה" className="h-40 w-full rounded-2xl object-cover" />
+            {image && <img src={image} alt="התמונה שצולמה" className="h-40 w-full rounded-2xl object-cover" />}
+
 
             <div className="max-h-52 space-y-2 overflow-y-auto rounded-2xl bg-muted/40 p-3">
               {thread.map((m, i) => (
