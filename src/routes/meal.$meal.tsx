@@ -10,7 +10,9 @@ import { actions, dayTotals, heDayLabel, todayKey, useStore } from "@/lib/store"
 import { MEALS, type LogEntry, type MealKey } from "@/lib/types";
 
 export const Route = createFileRoute("/meal/$meal")({
-  validateSearch: (s: Record<string, unknown>) => ({ date: typeof s["date"] === "string" ? s["date"] : undefined }),
+  validateSearch: (s: Record<string, unknown>): { date?: string } =>
+    typeof s["date"] === "string" ? { date: s["date"] } : {},
+
   head: () => ({
     meta: [
       { title: "פירוט ארוחה — פיטראק" },
