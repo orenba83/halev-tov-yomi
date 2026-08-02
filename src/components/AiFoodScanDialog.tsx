@@ -40,9 +40,10 @@ export function AiFoodScanDialog({
   meal: MealKey;
   onMealChange?: ((m: MealKey) => void) | undefined;
   date?: string | undefined;
-  mode?: "photo" | "barcode";
+  mode?: "photo" | "barcode" | "text";
 }) {
   const [image, setImage] = useState<string | null>(null);
+  const [started, setStarted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [thread, setThread] = useState<{ role: "user" | "ai"; text: string }[]>([]);
   const [hint, setHint] = useState("");
@@ -51,11 +52,13 @@ export function AiFoodScanDialog({
 
   const reset = () => {
     setImage(null);
+    setStarted(false);
     setThread([]);
     setHint("");
     setValues(EMPTY);
     setBusy(false);
   };
+
 
   const analyze = async (dataUrl: string, userHint?: string) => {
     setBusy(true);
