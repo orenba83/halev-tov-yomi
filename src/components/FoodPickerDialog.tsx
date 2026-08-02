@@ -133,6 +133,11 @@ export function FoodPickerDialog({
     onOpenChange(false);
   };
 
+  const pick = (f: Food) => {
+    setSelected(f);
+    setGrams(String(f.serving ?? 100));
+  };
+
   const addPicked = () => {
     if (!selected) return;
     const g = Number(grams);
@@ -141,10 +146,11 @@ export function FoodPickerDialog({
       return;
     }
     actions.addEntry({ date, meal, ...scale(selected, g) });
-    actions.pushRecent(selected.id);
+    if (!selected.id.startsWith("entry:")) actions.pushRecent(selected.id);
     toast.success(`${selected.name} נוסף ליומן`);
     close();
   };
+
 
   const addManual = () => {
     const cal = Number(manual.calories);
