@@ -314,14 +314,42 @@ export function FoodPickerDialog({
             <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate font-semibold">{selected.name}</span>
-                <button
-                  onClick={() => actions.toggleFavorite(selected.id)}
-                  className="shrink-0 text-muted-foreground hover:text-primary"
-                  aria-label="הוסף למועדפים"
-                >
-                  <Heart className={cn("size-4", state.favorites.includes(selected.id) && "fill-primary text-primary")} />
-                </button>
+                {!selected.id.startsWith("entry:") && (
+                  <button
+                    onClick={() => actions.toggleFavorite(selected.id)}
+                    className="shrink-0 text-muted-foreground hover:text-primary"
+                    aria-label="הוסף למועדפים"
+                  >
+                    <Heart className={cn("size-4", state.favorites.includes(selected.id) && "fill-primary text-primary")} />
+                  </button>
+                )}
               </div>
+              {selected.serving ? (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    מנה אחת = {selected.serving} ג׳ (לפי מה שאכלת בעבר)
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4].map((n) => {
+                      const g = +(selected.serving! * n).toFixed(1);
+                      return (
+                        <button
+                          key={n}
+                          onClick={() => setGrams(String(g))}
+                          className={cn(
+                            "rounded-full border border-border px-3 py-1.5 text-xs font-semibold transition-colors",
+                            Number(grams) === g
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "hover:bg-accent",
+                          )}
+                        >
+                          ×{n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <Preview food={selected} grams={Number(grams) || 0} />
               <div className="flex items-end gap-3">
                 <div className="w-32">
@@ -333,6 +361,7 @@ export function FoodPickerDialog({
               </div>
             </div>
           )}
+
         </DialogContent>
       </Dialog>
 
