@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Camera, Heart, Plus, Search } from "lucide-react";
+import { Camera, Clock, Heart, MessageSquareText, Plus, ScanBarcode, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,17 +149,28 @@ export function FoodPickerDialog({
     close();
   };
 
+  const [tab, setTab] = useState<"history" | "favorites" | "new">("new");
+  const [scanMode, setScanMode] = useState<"photo" | "barcode" | "text">("photo");
+  const favorites = useMemo(
+    () => state.favorites.map((id) => foods.find((f) => f.id === id)).filter(Boolean) as Food[],
+    [state.favorites, foods],
+  );
+  const openScan = (m: "photo" | "barcode" | "text") => {
+    setScanMode(m);
+    setScan(true);
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : close())}>
         <DialogContent className="max-h-[90vh] gap-4 overflow-y-auto text-right sm:max-w-lg">
-          <DialogHeader className="text-right">
-            <DialogTitle>חיפוש והוספת מזון</DialogTitle>
-            <DialogDescription>חיפוש במאגר, היסטוריית מוצרים, צילום או הזנה ידנית</DialogDescription>
+          <DialogHeader className="text-center sm:text-center">
+            <DialogTitle className="text-center">{MEALS.find((m) => m.key === meal)?.label ?? "הוספת מזון"}</DialogTitle>
+            <DialogDescription className="sr-only">חיפוש במאגר, היסטוריה, מועדפים, הזנה ידנית או AI</DialogDescription>
           </DialogHeader>
 
           {showMealSelect && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               {MEALS.map((m) => (
                 <button
                   key={m.key}
@@ -177,60 +188,100 @@ export function FoodPickerDialog({
             </div>
           )}
 
-          <Button variant="outline" className="w-full rounded-full" onClick={() => setScan(true)}>
-            <Camera className="size-4" /> צילום מנה / ברקוד עם AI
-          </Button>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { key: "new", label: "מוצר חדש", icon: Plus },
+              { key: "favorites", label: "מועדפים", icon: Star },
+              { key: "history", label: "היסטוריה", icon: Clock },
+            ] as const).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-2xl px-3 py-3 text-sm font-semibold transition-colors",
+                  tab === t.key ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground hover:bg-accent",
+                )}
+              >
+                <t.icon className="size-4" />
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-          <Tabs defaultValue="search">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="search">חיפוש</TabsTrigger>
-              <TabsTrigger value="history">היסטוריה</TabsTrigger>
-              <TabsTrigger value="manual">ידני</TabsTrigger>
-            </TabsList>
+          <div className="relative">
+            <Search className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="חיפוש מוצר במאגר"
+              className="rounded-2xl bg-muted pr-9"
+            />
+          </div>
 
-            <TabsContent value="search" className="mt-3 space-y-3">
-              <div className="relative">
-                <Search className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="חפש מוצר… (למשל: עוף, אורז)"
-                  className="pr-9"
-                />
+          {query.trim() ? (
+            <FoodList items={results} selected={selected} onSelect={setSelected} />
+          ) : tab === "history" ? (
+            history.length ? (
+              <FoodList items={history} selected={selected} onSelect={setSelected} />
+            ) : (
+              <p className="py-6 text-center text-sm text-muted-foreground">אין עדיין מוצרים בהיסטוריה</p>
+            )
+          ) : tab === "favorites" ? (
+            favorites.length ? (
+              <FoodList items={favorites} selected={selected} onSelect={setSelected} />
+            ) : (
+              <p className="py-6 text-center text-sm text-muted-foreground">עדיין לא סימנת מועדפים</p>
+            )
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-1 pt-2 text-center">
+                <Sparkles className="mx-auto size-9 text-primary" />
+                <h3 className="text-xl font-extrabold">הוספה באמצעות AI</h3>
+                <p className="text-sm text-muted-foreground">פרט ככל האפשר את המנה כדי לקבל תוצאה מדויקת.</p>
               </div>
-              <FoodList items={results} selected={selected} onSelect={setSelected} />
-            </TabsContent>
 
-            <TabsContent value="history" className="mt-3">
-              <p className="mb-2 text-xs text-muted-foreground">20 המוצרים האחרונים והמועדפים שלך</p>
-              {history.length ? (
-                <FoodList items={history} selected={selected} onSelect={setSelected} />
-              ) : (
-                <p className="py-6 text-center text-sm text-muted-foreground">אין עדיין מוצרים בהיסטוריה</p>
-              )}
-            </TabsContent>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  { key: "photo", label: "צילום ארוחה", icon: Camera },
+                  { key: "barcode", label: "סריקת תווית", icon: ScanBarcode },
+                  { key: "text", label: "תיאור בטקסט", icon: MessageSquareText },
+                ] as const).map((c) => (
+                  <button
+                    key={c.key}
+                    onClick={() => openScan(c.key)}
+                    className="flex flex-col items-center gap-2 rounded-3xl border border-border bg-card px-2 py-5 text-center transition-colors hover:bg-accent"
+                  >
+                    <c.icon className="size-7 text-foreground" />
+                    <span className="text-sm font-bold leading-tight">{c.label}</span>
+                  </button>
+                ))}
+              </div>
 
-            <TabsContent value="manual" className="mt-3 space-y-3">
-              <p className="text-xs text-muted-foreground">כל הערכים הם ל-100 גרם</p>
-              <div className="space-y-1.5">
-                <Label>שם המוצר *</Label>
-                <Input
-                  value={manual.name}
-                  onChange={(e) => setManual({ ...manual, name: e.target.value })}
-                  placeholder="למשל: עוגיית שיבולת שועל"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <NumField label="קלוריות *" value={manual.calories} onChange={(v) => setManual({ ...manual, calories: v })} />
-                <NumField label="חלבון (ג׳)" value={manual.protein} onChange={(v) => setManual({ ...manual, protein: v })} />
-                <NumField label="פחמימות (ג׳)" value={manual.carbs} onChange={(v) => setManual({ ...manual, carbs: v })} />
-                <NumField label="שומן (ג׳)" value={manual.fat} onChange={(v) => setManual({ ...manual, fat: v })} />
-              </div>
-              <Button className="w-full" onClick={addManual}>
-                <Plus className="size-4" /> שמור והוסף ליומן
-              </Button>
-            </TabsContent>
-          </Tabs>
+              <details className="rounded-2xl border border-border p-3">
+                <summary className="cursor-pointer text-sm font-semibold">הזנה ידנית של ערכים</summary>
+                <div className="mt-3 space-y-3">
+                  <p className="text-xs text-muted-foreground">כל הערכים הם ל-100 גרם</p>
+                  <div className="space-y-1.5">
+                    <Label>שם המוצר *</Label>
+                    <Input
+                      value={manual.name}
+                      onChange={(e) => setManual({ ...manual, name: e.target.value })}
+                      placeholder="למשל: עוגיית שיבולת שועל"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <NumField label="קלוריות *" value={manual.calories} onChange={(v) => setManual({ ...manual, calories: v })} />
+                    <NumField label="חלבון (ג׳)" value={manual.protein} onChange={(v) => setManual({ ...manual, protein: v })} />
+                    <NumField label="פחמימות (ג׳)" value={manual.carbs} onChange={(v) => setManual({ ...manual, carbs: v })} />
+                    <NumField label="שומן (ג׳)" value={manual.fat} onChange={(v) => setManual({ ...manual, fat: v })} />
+                  </div>
+                  <Button className="w-full" onClick={addManual}>
+                    <Plus className="size-4" /> שמור והוסף ליומן
+                  </Button>
+                </div>
+              </details>
+            </div>
+          )}
 
           {selected && (
             <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-3">
@@ -258,10 +309,18 @@ export function FoodPickerDialog({
         </DialogContent>
       </Dialog>
 
-      <AiFoodScanDialog open={scan} onOpenChange={setScan} meal={meal} onMealChange={onMealChange} date={date} />
+      <AiFoodScanDialog
+        open={scan}
+        onOpenChange={setScan}
+        meal={meal}
+        onMealChange={onMealChange}
+        date={date}
+        mode={scanMode}
+      />
     </>
   );
 }
+
 
 function Preview({ food, grams }: { food: Food; grams: number }) {
   const s = scale(food, grams > 0 ? grams : 100);

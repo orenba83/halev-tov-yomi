@@ -51,28 +51,32 @@ export const askAdvisor = createServerFn({ method: "POST" })
   });
 
 const ImageInput = z.object({
-  image: z.string().min(20),
+  image: z.string().min(20).optional(),
   hint: z.string().optional(),
 });
+
 
 export const analyzeFoodImage = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => ImageInput.parse(d))
   .handler(async ({ data }) => {
+    const content: Record<string, unknown>[] = [
+      {
+        type: "text",
+        text: data.image
+          ? data.hint
+            ? `הקשר מהמשתמש: ${data.hint}`
+            : "מה רואים בתמונה ומה הערכים התזונתיים?"
+          : `המשתמש תיאר בטקסט מה אכל: ${data.hint ?? ""}. הערך את הערכים התזונתיים.`,
+      },
+    ];
+    if (data.image) content.push({ type: "image_url", image_url: { url: data.image } });
     const raw = await callGateway({
       messages: [
         { role: "system", content: VISION_SYSTEM },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: data.hint ? `הקשר מהמשתמש: ${data.hint}` : "מה רואים בתמונה ומה הערכים התזונתיים?",
-            },
-            { type: "image_url", image_url: { url: data.image } },
-          ],
-        },
+        { role: "user", content },
       ],
     });
+
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) return { ok: false as const, note: raw || "לא הצלחתי לזהות את התמונה" };
     try {

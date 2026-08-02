@@ -12,7 +12,9 @@ import { actions, dayWater, todayKey, useStore } from "@/lib/store";
 import type { WaterEntry } from "@/lib/types";
 
 export const Route = createFileRoute("/water")({
-  validateSearch: (s: Record<string, unknown>) => ({ date: typeof s["date"] === "string" ? s["date"] : undefined }),
+  validateSearch: (s: Record<string, unknown>): { date?: string } =>
+    typeof s["date"] === "string" ? { date: s["date"] } : {},
+
   head: () => ({
     meta: [
       { title: "מעקב מים — פיטראק" },
