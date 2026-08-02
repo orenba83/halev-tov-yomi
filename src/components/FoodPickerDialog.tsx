@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Camera, Heart, Plus, Search } from "lucide-react";
+import { Camera, Clock, Heart, MessageSquareText, Plus, ScanBarcode, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
