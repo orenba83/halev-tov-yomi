@@ -94,15 +94,36 @@ export function FoodPickerDialog({
     return foods.filter((f) => f.name.includes(q)).slice(0, 25);
   }, [query, foods]);
 
+  /** היסטוריה: כל מה שנאכל בפועל (לפי יומן) + מועדפים ומוצרים אחרונים מהמאגר */
   const history = useMemo(() => {
-    const ids = [...state.favorites, ...state.recent];
+    const out: Food[] = [];
     const seen = new Set<string>();
-    return ids
-      .filter((id) => (seen.has(id) ? false : (seen.add(id), true)))
-      .map((id) => foods.find((f) => f.id === id))
-      .filter(Boolean)
-      .slice(0, 20) as Food[];
-  }, [state.favorites, state.recent, foods]);
+    const eaten = [...state.entries].reverse();
+    for (const e of eaten) {
+      const key = e.name.trim();
+      if (!key || seen.has(key) || e.grams <= 0) continue;
+      seen.add(key);
+      const per = 100 / e.grams;
+      out.push({
+        id: `entry:${e.id}`,
+        name: e.name,
+        calories: Math.round(e.calories * per),
+        protein: +(e.protein * per).toFixed(1),
+        carbs: +(e.carbs * per).toFixed(1),
+        fat: +(e.fat * per).toFixed(1),
+        serving: e.grams,
+      });
+    }
+    for (const id of [...state.favorites, ...state.recent]) {
+      const f = foods.find((x) => x.id === id);
+      if (f && !seen.has(f.name.trim())) {
+        seen.add(f.name.trim());
+        out.push(f);
+      }
+    }
+    return out.slice(0, 20);
+  }, [state.entries, state.favorites, state.recent, foods]);
+
 
   const close = () => {
     setSelected(null);
