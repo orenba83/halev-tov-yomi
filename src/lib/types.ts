@@ -17,6 +17,8 @@ export interface Food {
   fat: number;
   unit?: string;
   custom?: boolean;
+  /** גודל מנה בגרמים (למשל פרכית אחת) – לשימוש בהיסטוריה */
+  serving?: number;
 }
 
 export interface LogEntry {

@@ -94,15 +94,36 @@ export function FoodPickerDialog({
     return foods.filter((f) => f.name.includes(q)).slice(0, 25);
   }, [query, foods]);
 
+  /** היסטוריה: כל מה שנאכל בפועל (לפי יומן) + מועדפים ומוצרים אחרונים מהמאגר */
   const history = useMemo(() => {
-    const ids = [...state.favorites, ...state.recent];
+    const out: Food[] = [];
     const seen = new Set<string>();
-    return ids
-      .filter((id) => (seen.has(id) ? false : (seen.add(id), true)))
-      .map((id) => foods.find((f) => f.id === id))
-      .filter(Boolean)
-      .slice(0, 20) as Food[];
-  }, [state.favorites, state.recent, foods]);
+    const eaten = [...state.entries].reverse();
+    for (const e of eaten) {
+      const key = e.name.trim();
+      if (!key || seen.has(key) || e.grams <= 0) continue;
+      seen.add(key);
+      const per = 100 / e.grams;
+      out.push({
+        id: `entry:${e.id}`,
+        name: e.name,
+        calories: Math.round(e.calories * per),
+        protein: +(e.protein * per).toFixed(1),
+        carbs: +(e.carbs * per).toFixed(1),
+        fat: +(e.fat * per).toFixed(1),
+        serving: e.grams,
+      });
+    }
+    for (const id of [...state.favorites, ...state.recent]) {
+      const f = foods.find((x) => x.id === id);
+      if (f && !seen.has(f.name.trim())) {
+        seen.add(f.name.trim());
+        out.push(f);
+      }
+    }
+    return out.slice(0, 20);
+  }, [state.entries, state.favorites, state.recent, foods]);
+
 
   const close = () => {
     setSelected(null);
@@ -110,6 +131,11 @@ export function FoodPickerDialog({
     setGrams("100");
     setManual({ name: "", calories: "", protein: "", carbs: "", fat: "" });
     onOpenChange(false);
+  };
+
+  const pick = (f: Food) => {
+    setSelected(f);
+    setGrams(String(f.serving ?? 100));
   };
 
   const addPicked = () => {
@@ -120,10 +146,11 @@ export function FoodPickerDialog({
       return;
     }
     actions.addEntry({ date, meal, ...scale(selected, g) });
-    actions.pushRecent(selected.id);
+    if (!selected.id.startsWith("entry:")) actions.pushRecent(selected.id);
     toast.success(`${selected.name} נוסף ליומן`);
     close();
   };
+
 
   const addManual = () => {
     const cal = Number(manual.calories);
@@ -219,16 +246,16 @@ export function FoodPickerDialog({
           </div>
 
           {query.trim() ? (
-            <FoodList items={results} selected={selected} onSelect={setSelected} />
+            <FoodList items={results} selected={selected} onSelect={pick} />
           ) : tab === "history" ? (
             history.length ? (
-              <FoodList items={history} selected={selected} onSelect={setSelected} />
+              <FoodList items={history} selected={selected} onSelect={pick} />
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">אין עדיין מוצרים בהיסטוריה</p>
             )
           ) : tab === "favorites" ? (
             favorites.length ? (
-              <FoodList items={favorites} selected={selected} onSelect={setSelected} />
+              <FoodList items={favorites} selected={selected} onSelect={pick} />
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">עדיין לא סימנת מועדפים</p>
             )
@@ -287,14 +314,42 @@ export function FoodPickerDialog({
             <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate font-semibold">{selected.name}</span>
-                <button
-                  onClick={() => actions.toggleFavorite(selected.id)}
-                  className="shrink-0 text-muted-foreground hover:text-primary"
-                  aria-label="הוסף למועדפים"
-                >
-                  <Heart className={cn("size-4", state.favorites.includes(selected.id) && "fill-primary text-primary")} />
-                </button>
+                {!selected.id.startsWith("entry:") && (
+                  <button
+                    onClick={() => actions.toggleFavorite(selected.id)}
+                    className="shrink-0 text-muted-foreground hover:text-primary"
+                    aria-label="הוסף למועדפים"
+                  >
+                    <Heart className={cn("size-4", state.favorites.includes(selected.id) && "fill-primary text-primary")} />
+                  </button>
+                )}
               </div>
+              {selected.serving ? (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">
+                    מנה אחת = {selected.serving} ג׳ (לפי מה שאכלת בעבר)
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4].map((n) => {
+                      const g = +(selected.serving! * n).toFixed(1);
+                      return (
+                        <button
+                          key={n}
+                          onClick={() => setGrams(String(g))}
+                          className={cn(
+                            "rounded-full border border-border px-3 py-1.5 text-xs font-semibold transition-colors",
+                            Number(grams) === g
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "hover:bg-accent",
+                          )}
+                        >
+                          ×{n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <Preview food={selected} grams={Number(grams) || 0} />
               <div className="flex items-end gap-3">
                 <div className="w-32">
@@ -306,6 +361,7 @@ export function FoodPickerDialog({
               </div>
             </div>
           )}
+
         </DialogContent>
       </Dialog>
 
