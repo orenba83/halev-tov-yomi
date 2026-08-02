@@ -51,9 +51,10 @@ export const askAdvisor = createServerFn({ method: "POST" })
   });
 
 const ImageInput = z.object({
-  image: z.string().min(20),
+  image: z.string().min(20).optional(),
   hint: z.string().optional(),
 });
+
 
 export const analyzeFoodImage = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => ImageInput.parse(d))
