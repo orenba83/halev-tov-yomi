@@ -60,10 +60,11 @@ export function AiFoodScanDialog({
   };
 
 
-  const analyze = async (dataUrl: string, userHint?: string) => {
+  const analyze = async (dataUrl: string | null, userHint?: string) => {
     setBusy(true);
+    setStarted(true);
     try {
-      const res = await analyzeFoodImage({ data: { image: dataUrl, hint: userHint } });
+      const res = await analyzeFoodImage({ data: { image: dataUrl ?? undefined, hint: userHint } });
       if (!res.ok) {
         setThread((t) => [...t, { role: "ai", text: res.note || "לא הצלחתי לזהות, נסה תמונה ברורה יותר" }]);
         return;
@@ -85,7 +86,7 @@ export function AiFoodScanDialog({
         },
       ]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "שגיאה בזיהוי התמונה");
+      toast.error(e instanceof Error ? e.message : "שגיאה בזיהוי המנה");
     } finally {
       setBusy(false);
     }
@@ -108,11 +109,12 @@ export function AiFoodScanDialog({
 
   const sendHint = () => {
     const h = hint.trim();
-    if (!h || !image) return;
+    if (!h) return;
     setThread((t) => [...t, { role: "user", text: h }]);
     setHint("");
     void analyze(image, h);
   };
+
 
   const add = () => {
     const g = Number(values.grams);
