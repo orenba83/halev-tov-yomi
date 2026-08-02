@@ -246,16 +246,16 @@ export function FoodPickerDialog({
           </div>
 
           {query.trim() ? (
-            <FoodList items={results} selected={selected} onSelect={setSelected} />
+            <FoodList items={results} selected={selected} onSelect={pick} />
           ) : tab === "history" ? (
             history.length ? (
-              <FoodList items={history} selected={selected} onSelect={setSelected} />
+              <FoodList items={history} selected={selected} onSelect={pick} />
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">אין עדיין מוצרים בהיסטוריה</p>
             )
           ) : tab === "favorites" ? (
             favorites.length ? (
-              <FoodList items={favorites} selected={selected} onSelect={setSelected} />
+              <FoodList items={favorites} selected={selected} onSelect={pick} />
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">עדיין לא סימנת מועדפים</p>
             )
