@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, ImagePlus, Loader2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,14 @@ export function AiFoodScanDialog({
     setValues(EMPTY);
     setBusy(false);
   };
+  /** פתיחת מצלמה מיידית כשנכנסים למצב צילום */
+  useEffect(() => {
+    if (open && mode !== "text") {
+      const t = setTimeout(() => fileRef.current?.click(), 120);
+      return () => clearTimeout(t);
+    }
+    return;
+  }, [open, mode]);
 
 
   const analyze = async (dataUrl: string | null, userHint?: string) => {
@@ -101,7 +109,7 @@ export function AiFoodScanDialog({
     reader.onload = () => {
       const url = String(reader.result);
       setImage(url);
-      setThread([{ role: "user", text: mode === "barcode" ? "סרקתי ברקוד/תווית" : "צילמתי מנה" }]);
+      setThread([{ role: "user", text: "צילמתי מנה / ברקוד" }]);
       void analyze(url);
     };
     reader.readAsDataURL(file);
@@ -158,7 +166,7 @@ export function AiFoodScanDialog({
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            {mode === "barcode" ? "סריקת תווית / ברקוד" : mode === "text" ? "תיאור בטקסט" : "צילום ארוחה"}
+            {mode === "text" ? "תיאור בטקסט" : "צילום מנה או ברקוד"}
           </DialogTitle>
           <DialogDescription>
             {mode === "text"

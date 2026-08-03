@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Camera, Clock, Heart, MessageSquareText, Plus, ScanBarcode, Search, Sparkles, Star } from "lucide-react";
+import { Camera, Clock, Heart, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { actions, allFoods, todayKey, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { MEALS, type Food, type LogEntry, type MealKey } from "@/lib/types";
+import { UNIT_LABELS, unitGrams, type UnitKey } from "@/lib/units";
 import { AiFoodScanDialog } from "./AiFoodScanDialog";
 
 export interface PickedFood {
@@ -83,9 +84,14 @@ export function FoodPickerDialog({
   const state = useStore();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Food | null>(null);
-  const [grams, setGrams] = useState("100");
+  const [unit, setUnit] = useState<UnitKey>("gram");
+  const [amount, setAmount] = useState("100");
   const [scan, setScan] = useState(false);
   const [manual, setManual] = useState({ name: "", calories: "", protein: "", carbs: "", fat: "" });
+
+  const perUnit = selected ? unitGrams(selected) : null;
+  const grams = perUnit ? +((Number(amount) || 0) * perUnit[unit]).toFixed(1) : 0;
+
 
   const foods = allFoods(state);
   const results = useMemo(() => {
@@ -128,28 +134,35 @@ export function FoodPickerDialog({
   const close = () => {
     setSelected(null);
     setQuery("");
-    setGrams("100");
+    setUnit("gram");
+    setAmount("100");
     setManual({ name: "", calories: "", protein: "", carbs: "", fat: "" });
     onOpenChange(false);
   };
 
   const pick = (f: Food) => {
     setSelected(f);
-    setGrams(String(f.serving ?? 100));
+    if (f.serving && f.serving > 0) {
+      setUnit("piece");
+      setAmount("1");
+    } else {
+      setUnit("gram");
+      setAmount("100");
+    }
   };
 
   const addPicked = () => {
     if (!selected) return;
-    const g = Number(grams);
-    if (!Number.isFinite(g) || g <= 0) {
-      toast.error("יש להזין כמות חיובית בגרמים");
+    if (!Number.isFinite(grams) || grams <= 0) {
+      toast.error("יש להזין כמות חיובית");
       return;
     }
-    actions.addEntry({ date, meal, ...scale(selected, g) });
+    actions.addEntry({ date, meal, ...scale(selected, grams) });
     if (!selected.id.startsWith("entry:")) actions.pushRecent(selected.id);
     toast.success(`${selected.name} נוסף ליומן`);
     close();
   };
+
 
 
   const addManual = () => {
@@ -267,10 +280,9 @@ export function FoodPickerDialog({
                 <p className="text-sm text-muted-foreground">פרט ככל האפשר את המנה כדי לקבל תוצאה מדויקת.</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {([
-                  { key: "photo", label: "צילום ארוחה", icon: Camera },
-                  { key: "barcode", label: "סריקת תווית", icon: ScanBarcode },
+                  { key: "photo", label: "צילום מנה או ברקוד", icon: Camera },
                   { key: "text", label: "תיאור בטקסט", icon: MessageSquareText },
                 ] as const).map((c) => (
                   <button
@@ -283,6 +295,7 @@ export function FoodPickerDialog({
                   </button>
                 ))}
               </div>
+
 
               <details className="rounded-2xl border border-border p-3">
                 <summary className="cursor-pointer text-sm font-semibold">הזנה ידנית של ערכים</summary>
@@ -324,41 +337,60 @@ export function FoodPickerDialog({
                   </button>
                 )}
               </div>
-              {selected.serving ? (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground">
-                    מנה אחת = {selected.serving} ג׳ (לפי מה שאכלת בעבר)
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4].map((n) => {
-                      const g = +(selected.serving! * n).toFixed(1);
-                      return (
-                        <button
-                          key={n}
-                          onClick={() => setGrams(String(g))}
-                          className={cn(
-                            "rounded-full border border-border px-3 py-1.5 text-xs font-semibold transition-colors",
-                            Number(grams) === g
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "hover:bg-accent",
-                          )}
-                        >
-                          ×{n}
-                        </button>
-                      );
-                    })}
-                  </div>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">באיזו יחידת מדידה?</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {(Object.keys(UNIT_LABELS) as UnitKey[]).map((u) => (
+                    <button
+                      key={u}
+                      onClick={() => {
+                        setUnit(u);
+                        setAmount(u === "gram" ? "100" : "1");
+                      }}
+                      className={cn(
+                        "rounded-full border border-border px-2 py-1.5 text-xs font-semibold transition-colors",
+                        unit === u ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+                      )}
+                    >
+                      {UNIT_LABELS[u]}
+                    </button>
+                  ))}
                 </div>
-              ) : null}
-              <Preview food={selected} grams={Number(grams) || 0} />
+                {unit !== "gram" && perUnit && (
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {UNIT_LABELS[unit]} אחת ≈ {perUnit[unit]} ג׳
+                    </span>
+                    {[0.5, 1, 2, 3, 4].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setAmount(String(n))}
+                        className={cn(
+                          "rounded-full border border-border px-3 py-1 text-xs font-semibold transition-colors",
+                          Number(amount) === n ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+                        )}
+                      >
+                        ×{n}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Preview food={selected} grams={grams} />
               <div className="flex items-end gap-3">
                 <div className="w-32">
-                  <NumField label="כמות (גרם)" value={grams} onChange={setGrams} />
+                  <NumField
+                    label={unit === "gram" ? "כמות (גרם)" : `כמות (${UNIT_LABELS[unit]})`}
+                    value={amount}
+                    onChange={setAmount}
+                    step={unit === "gram" ? "1" : "0.5"}
+                  />
                 </div>
                 <Button className="flex-1" onClick={addPicked}>
-                  <Plus className="size-4" /> הוספה ליומן
+                  <Plus className="size-4" /> הוספה ליומן ({grams} ג׳)
                 </Button>
               </div>
+
             </div>
           )}
 
