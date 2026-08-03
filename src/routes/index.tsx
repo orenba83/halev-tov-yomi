@@ -77,10 +77,44 @@ function Dashboard() {
       <Card className="flex flex-col items-center gap-5 md:flex-row md:justify-center">
         <Ring value={totals.calories} goal={settings.calorieGoal} label={`${remaining}`} sub="קל׳ נותרו" />
         <div className="grid w-full max-w-sm grid-cols-3 gap-2 text-center">
-          <Metric title="נצרך" value={`${Math.round(totals.calories)}`} />
+          <Metric title="סה״כ נאכל" value={`${Math.round(totals.calories)}`} />
           <Metric title="יעד" value={`${settings.calorieGoal}`} />
           <Metric title="נותר" value={`${remaining}`} />
         </div>
+      </Card>
+
+      <Card className="space-y-2">
+        <h2 className="font-bold">פירוט לפי ארוחות</h2>
+        {MEALS.map((m) => {
+          const t = state.entries
+            .filter((e) => e.date === date && e.meal === m.key)
+            .reduce(
+              (a, e) => ({
+                calories: a.calories + e.calories,
+                protein: a.protein + e.protein,
+                carbs: a.carbs + e.carbs,
+                fat: a.fat + e.fat,
+              }),
+              { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            );
+          return (
+            <Link
+              key={m.key}
+              to="/meal/$meal"
+              params={{ meal: m.key }}
+              search={{ date }}
+              className="block rounded-2xl bg-muted/50 px-3 py-2.5"
+            >
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-medium">{m.label}</span>
+                <span className="text-sm font-bold tabular-nums">{Math.round(t.calories)} קל׳</span>
+              </div>
+              <p className="text-xs text-muted-foreground tabular-nums">
+                חלבון {Math.round(t.protein)} ג׳ · פחמימות {Math.round(t.carbs)} ג׳ · שומן {Math.round(t.fat)} ג׳
+              </p>
+            </Link>
+          );
+        })}
       </Card>
 
       <Card className="flex items-center gap-4">
