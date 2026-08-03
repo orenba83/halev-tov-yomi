@@ -60,6 +60,29 @@ function Dashboard() {
         <h1 className="text-2xl font-extrabold tracking-tight">{settings.name}</h1>
       </header>
 
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <MacroTile label="קלוריות" value={totals.calories} goal={settings.calorieGoal} color="primary" unit="קל׳" />
+        <MacroTile label="חלבון" value={totals.protein} goal={settings.proteinGoal} color="protein" />
+        <MacroTile label="פחמימות" value={totals.carbs} goal={settings.carbGoal} color="carb" />
+        <MacroTile label="שומן" value={totals.fat} goal={settings.fatGoal} color="fat" />
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-2">
+        <MetricHistoryButton kind="calories" label="היסטוריית קלוריות" />
+        <MetricHistoryButton kind="protein" label="חלבון" />
+        <MetricHistoryButton kind="carbs" label="פחמימות" />
+        <MetricHistoryButton kind="fat" label="שומן" />
+      </div>
+
+      <Card className="flex flex-col items-center gap-5 md:flex-row md:justify-center">
+        <Ring value={totals.calories} goal={settings.calorieGoal} label={`${remaining}`} sub="קל׳ נותרו" />
+        <div className="grid w-full max-w-sm grid-cols-3 gap-2 text-center">
+          <Metric title="נצרך" value={`${Math.round(totals.calories)}`} />
+          <Metric title="יעד" value={`${settings.calorieGoal}`} />
+          <Metric title="נותר" value={`${remaining}`} />
+        </div>
+      </Card>
+
       <Card className="flex items-center gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent text-accent-foreground">
           <Footprints className="size-5" />
@@ -114,28 +137,6 @@ function Dashboard() {
 
       <DayNav date={date} onChange={setDate} />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MacroTile label="קלוריות" value={totals.calories} goal={settings.calorieGoal} color="primary" unit="קל׳" />
-        <MacroTile label="חלבון" value={totals.protein} goal={settings.proteinGoal} color="protein" />
-        <MacroTile label="פחמימות" value={totals.carbs} goal={settings.carbGoal} color="carb" />
-        <MacroTile label="שומן" value={totals.fat} goal={settings.fatGoal} color="fat" />
-      </div>
-
-      <div className="flex flex-wrap justify-center gap-2">
-        <MetricHistoryButton kind="calories" label="היסטוריית קלוריות" />
-        <MetricHistoryButton kind="protein" label="חלבון" />
-        <MetricHistoryButton kind="carbs" label="פחמימות" />
-        <MetricHistoryButton kind="fat" label="שומן" />
-      </div>
-
-      <Card className="flex flex-col items-center gap-5 md:flex-row md:justify-center">
-        <Ring value={totals.calories} goal={settings.calorieGoal} label={`${remaining}`} sub="קל׳ נותרו" />
-        <div className="grid w-full max-w-sm grid-cols-3 gap-2 text-center">
-          <Metric title="נצרך" value={`${Math.round(totals.calories)}`} />
-          <Metric title="יעד" value={`${settings.calorieGoal}`} />
-          <Metric title="נותר" value={`${remaining}`} />
-        </div>
-      </Card>
 
       <Card className="flex items-center gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-water/15 text-water">
