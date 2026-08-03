@@ -81,6 +81,10 @@ export interface Settings {
   carbGoal: number;
   fatGoal: number;
   theme: "light" | "dark";
+  /** חיבור לחשבון Huawei Health (צמיד חכם) */
+  huaweiEmail?: string;
+  huaweiConnected?: boolean;
+  huaweiLastSync?: string;
 }
 
 export interface AppState {
