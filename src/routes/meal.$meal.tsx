@@ -2,11 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowRight, Camera, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, MacroTile } from "@/components/Stat";
+import { Card } from "@/components/Stat";
 import { EditEntryDialog, FoodPickerDialog } from "@/components/FoodPickerDialog";
 import { AiFoodScanDialog } from "@/components/AiFoodScanDialog";
 import { Button } from "@/components/ui/button";
-import { actions, dayTotals, heDayLabel, todayKey, useStore } from "@/lib/store";
+import { actions, heDayLabel, todayKey, useStore } from "@/lib/store";
 import { MEALS, type LogEntry, type MealKey } from "@/lib/types";
 
 export const Route = createFileRoute("/meal/$meal")({
@@ -38,16 +38,6 @@ function MealScreen() {
   const [editing, setEditing] = useState<LogEntry | null>(null);
 
   const items = state.entries.filter((e) => e.date === date && e.meal === mealKey);
-  const sum = items.reduce(
-    (a, e) => ({
-      calories: a.calories + e.calories,
-      protein: a.protein + e.protein,
-      carbs: a.carbs + e.carbs,
-      fat: a.fat + e.fat,
-    }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
-  );
-  const dayLeft = Math.max(0, state.settings.calorieGoal - dayTotals(state, date).calories);
 
   return (
     <div className="space-y-4">
@@ -63,18 +53,6 @@ function MealScreen() {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MacroTile label="קלוריות בארוחה" value={sum.calories} goal={state.settings.calorieGoal} color="primary" unit="קל׳" />
-        <MacroTile label="חלבון" value={sum.protein} goal={state.settings.proteinGoal} color="protein" />
-        <MacroTile label="פחמימות" value={sum.carbs} goal={state.settings.carbGoal} color="carb" />
-        <MacroTile label="שומן" value={sum.fat} goal={state.settings.fatGoal} color="fat" />
-      </div>
-
-      <Card className="text-center">
-        <p className="text-sm text-muted-foreground">נותר לי היום לאכול</p>
-        <p className="text-3xl font-extrabold tabular-nums">{dayLeft} קל׳</p>
-      </Card>
-
       <Card className="space-y-2">
         <h2 className="font-bold">מה אכלתי</h2>
         {items.map((e) => (
@@ -82,9 +60,6 @@ function MealScreen() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">
                 {e.name} <span className="text-muted-foreground">· {e.grams} ג׳</span>
-              </p>
-              <p className="text-xs text-muted-foreground tabular-nums">
-                {e.calories} קל׳ · חלבון {e.protein} ג׳ · פחמימות {e.carbs} ג׳ · שומן {e.fat} ג׳
               </p>
             </div>
             <button onClick={() => setEditing(e)} aria-label="עריכה" className="text-muted-foreground hover:text-foreground">

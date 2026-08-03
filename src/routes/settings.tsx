@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Download, Moon, RotateCcw, Sun, Upload } from "lucide-react";
+import { Download, Link2, Moon, RotateCcw, Sun, Upload, Watch } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/Stat";
 import { NumField } from "@/components/FoodPickerDialog";
@@ -166,7 +166,10 @@ function SettingsPage() {
         </div>
       </Card>
 
+      <HuaweiCard />
+
       <Card className="space-y-3">
+
         <h2 className="font-bold">נתונים וגיבוי</h2>
         <p className="text-xs text-muted-foreground">
           כל הנתונים נשמרים מקומית במכשיר שלך. מומלץ לייצא גיבוי מדי פעם.
@@ -216,5 +219,114 @@ function MacroField({
       <NumField label={label} value={value} onChange={onChange} />
       <p className="mt-1 text-xs text-muted-foreground">≈ {Math.round(kcal)} קק״ל</p>
     </div>
+  );
+}
+
+function HuaweiCard() {
+  const { settings } = useStore();
+  const [email, setEmail] = useState(settings.huaweiEmail ?? "");
+
+  const connect = () => {
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      toast.error("יש להזין כתובת חשבון Huawei תקינה");
+      return;
+    }
+    actions.updateSettings({ huaweiEmail: email.trim(), huaweiConnected: true });
+    toast.success("החשבון חובר. אפשר לסנכרן צעדים מהצמיד");
+  };
+
+  const disconnect = () => {
+    actions.updateSettings({ huaweiConnected: false, huaweiEmail: "", huaweiLastSync: "" });
+    toast.success("החיבור נותק");
+  };
+
+  const importSteps = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result);
+      let rows: { date: string; steps: number }[] = [];
+      try {
+        const json = JSON.parse(text);
+        const arr = Array.isArray(json) ? json : (json.steps ?? json.data ?? []);
+        rows = (arr as any[])
+          .map((r) => ({
+            date: String(r.date ?? r.day ?? r.time ?? "").slice(0, 10),
+            steps: Number(r.steps ?? r.value ?? r.stepCount ?? 0),
+          }))
+          .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.steps > 0);
+      } catch {
+        rows = text
+          .split(/\r?\n/)
+          .slice(1)
+          .map((line) => {
+            const [d, v] = line.split(/[,;\t]/);
+            return { date: String(d ?? "").trim().slice(0, 10), steps: Number(v) };
+          })
+          .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && Number.isFinite(r.steps) && r.steps > 0);
+      }
+      if (!rows.length) {
+        toast.error("לא נמצאו נתוני צעדים בקובץ");
+        return;
+      }
+      rows.forEach((r) => actions.setSteps(r.date, r.steps));
+      actions.updateSettings({ huaweiLastSync: new Date().toISOString() });
+      toast.success(`סונכרנו ${rows.length} ימי צעדים מהצמיד`);
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="grid size-10 place-items-center rounded-2xl bg-accent text-accent-foreground">
+          <Watch className="size-5" />
+        </span>
+        <div>
+          <h2 className="font-bold">חשבון Huawei Health</h2>
+          <p className="text-xs text-muted-foreground">סנכרון צעדים מהצמיד החכם</p>
+        </div>
+      </div>
+
+      {settings.huaweiConnected ? (
+        <>
+          <p className="text-sm">
+            מחובר לחשבון <span className="font-medium">{settings.huaweiEmail}</span>
+          </p>
+          {settings.huaweiLastSync && (
+            <p className="text-xs text-muted-foreground">
+              סנכרון אחרון: {new Date(settings.huaweiLastSync).toLocaleString("he-IL")}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-accent">
+              <Upload className="size-4" /> סנכרון צעדים מקובץ Huawei Health
+              <input
+                type="file"
+                accept=".json,.csv,text/csv,application/json"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && importSteps(e.target.files[0])}
+              />
+            </label>
+            <Button variant="ghost" className="rounded-full text-destructive" onClick={disconnect}>
+              ניתוק חשבון
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            <Label>חשבון Huawei (אימייל)</Label>
+            <Input dir="ltr" value={email} placeholder="name@example.com" onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <Button className="rounded-full" onClick={connect}>
+            <Link2 className="size-4" /> חיבור לחשבון
+          </Button>
+        </>
+      )}
+      <p className="text-xs text-muted-foreground">
+        הצעדים נמשכים מייצוא נתוני Huawei Health (Health &gt; אני &gt; הגדרות פרטיות &gt; ייצוא נתונים) ומתעדכנים
+        אוטומטית בכל המסכים.
+      </p>
+    </Card>
   );
 }
