@@ -166,7 +166,10 @@ function SettingsPage() {
         </div>
       </Card>
 
+      <HuaweiCard />
+
       <Card className="space-y-3">
+
         <h2 className="font-bold">נתונים וגיבוי</h2>
         <p className="text-xs text-muted-foreground">
           כל הנתונים נשמרים מקומית במכשיר שלך. מומלץ לייצא גיבוי מדי פעם.
