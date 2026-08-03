@@ -134,28 +134,35 @@ export function FoodPickerDialog({
   const close = () => {
     setSelected(null);
     setQuery("");
-    setGrams("100");
+    setUnit("gram");
+    setAmount("100");
     setManual({ name: "", calories: "", protein: "", carbs: "", fat: "" });
     onOpenChange(false);
   };
 
   const pick = (f: Food) => {
     setSelected(f);
-    setGrams(String(f.serving ?? 100));
+    if (f.serving && f.serving > 0) {
+      setUnit("piece");
+      setAmount("1");
+    } else {
+      setUnit("gram");
+      setAmount("100");
+    }
   };
 
   const addPicked = () => {
     if (!selected) return;
-    const g = Number(grams);
-    if (!Number.isFinite(g) || g <= 0) {
-      toast.error("יש להזין כמות חיובית בגרמים");
+    if (!Number.isFinite(grams) || grams <= 0) {
+      toast.error("יש להזין כמות חיובית");
       return;
     }
-    actions.addEntry({ date, meal, ...scale(selected, g) });
+    actions.addEntry({ date, meal, ...scale(selected, grams) });
     if (!selected.id.startsWith("entry:")) actions.pushRecent(selected.id);
     toast.success(`${selected.name} נוסף ליומן`);
     close();
   };
+
 
 
   const addManual = () => {
