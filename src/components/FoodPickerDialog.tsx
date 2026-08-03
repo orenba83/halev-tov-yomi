@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { actions, allFoods, todayKey, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { MEALS, type Food, type LogEntry, type MealKey } from "@/lib/types";
+import { UNIT_LABELS, unitGrams, type UnitKey } from "@/lib/units";
 import { AiFoodScanDialog } from "./AiFoodScanDialog";
 
 export interface PickedFood {
@@ -83,9 +84,14 @@ export function FoodPickerDialog({
   const state = useStore();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Food | null>(null);
-  const [grams, setGrams] = useState("100");
+  const [unit, setUnit] = useState<UnitKey>("gram");
+  const [amount, setAmount] = useState("100");
   const [scan, setScan] = useState(false);
   const [manual, setManual] = useState({ name: "", calories: "", protein: "", carbs: "", fat: "" });
+
+  const perUnit = selected ? unitGrams(selected) : null;
+  const grams = perUnit ? +((Number(amount) || 0) * perUnit[unit]).toFixed(1) : 0;
+
 
   const foods = allFoods(state);
   const results = useMemo(() => {
