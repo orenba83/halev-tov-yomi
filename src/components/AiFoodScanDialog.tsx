@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, ImagePlus, Loader2, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -158,7 +158,7 @@ export function AiFoodScanDialog({
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            {mode === "barcode" ? "סריקת תווית / ברקוד" : mode === "text" ? "תיאור בטקסט" : "צילום ארוחה"}
+            {mode === "text" ? "תיאור בטקסט" : "צילום מנה או ברקוד"}
           </DialogTitle>
           <DialogDescription>
             {mode === "text"
