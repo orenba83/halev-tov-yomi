@@ -58,6 +58,14 @@ export function AiFoodScanDialog({
     setValues(EMPTY);
     setBusy(false);
   };
+  /** פתיחת מצלמה מיידית כשנכנסים למצב צילום */
+  useEffect(() => {
+    if (open && mode !== "text") {
+      const t = setTimeout(() => fileRef.current?.click(), 120);
+      return () => clearTimeout(t);
+    }
+    return;
+  }, [open, mode]);
 
 
   const analyze = async (dataUrl: string | null, userHint?: string) => {
@@ -101,7 +109,7 @@ export function AiFoodScanDialog({
     reader.onload = () => {
       const url = String(reader.result);
       setImage(url);
-      setThread([{ role: "user", text: mode === "barcode" ? "סרקתי ברקוד/תווית" : "צילמתי מנה" }]);
+      setThread([{ role: "user", text: "צילמתי מנה / ברקוד" }]);
       void analyze(url);
     };
     reader.readAsDataURL(file);
