@@ -280,10 +280,9 @@ export function FoodPickerDialog({
                 <p className="text-sm text-muted-foreground">פרט ככל האפשר את המנה כדי לקבל תוצאה מדויקת.</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {([
-                  { key: "photo", label: "צילום ארוחה", icon: Camera },
-                  { key: "barcode", label: "סריקת תווית", icon: ScanBarcode },
+                  { key: "photo", label: "צילום מנה או ברקוד", icon: Camera },
                   { key: "text", label: "תיאור בטקסט", icon: MessageSquareText },
                 ] as const).map((c) => (
                   <button
@@ -296,6 +295,7 @@ export function FoodPickerDialog({
                   </button>
                 ))}
               </div>
+
 
               <details className="rounded-2xl border border-border p-3">
                 <summary className="cursor-pointer text-sm font-semibold">הזנה ידנית של ערכים</summary>
@@ -337,41 +337,60 @@ export function FoodPickerDialog({
                   </button>
                 )}
               </div>
-              {selected.serving ? (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground">
-                    מנה אחת = {selected.serving} ג׳ (לפי מה שאכלת בעבר)
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4].map((n) => {
-                      const g = +(selected.serving! * n).toFixed(1);
-                      return (
-                        <button
-                          key={n}
-                          onClick={() => setGrams(String(g))}
-                          className={cn(
-                            "rounded-full border border-border px-3 py-1.5 text-xs font-semibold transition-colors",
-                            Number(grams) === g
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "hover:bg-accent",
-                          )}
-                        >
-                          ×{n}
-                        </button>
-                      );
-                    })}
-                  </div>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">באיזו יחידת מדידה?</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {(Object.keys(UNIT_LABELS) as UnitKey[]).map((u) => (
+                    <button
+                      key={u}
+                      onClick={() => {
+                        setUnit(u);
+                        setAmount(u === "gram" ? "100" : "1");
+                      }}
+                      className={cn(
+                        "rounded-full border border-border px-2 py-1.5 text-xs font-semibold transition-colors",
+                        unit === u ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+                      )}
+                    >
+                      {UNIT_LABELS[u]}
+                    </button>
+                  ))}
                 </div>
-              ) : null}
-              <Preview food={selected} grams={Number(grams) || 0} />
+                {unit !== "gram" && perUnit && (
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {UNIT_LABELS[unit]} אחת ≈ {perUnit[unit]} ג׳
+                    </span>
+                    {[0.5, 1, 2, 3, 4].map((n) => (
+                      <button
+                        key={n}
+                        onClick={() => setAmount(String(n))}
+                        className={cn(
+                          "rounded-full border border-border px-3 py-1 text-xs font-semibold transition-colors",
+                          Number(amount) === n ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+                        )}
+                      >
+                        ×{n}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <Preview food={selected} grams={grams} />
               <div className="flex items-end gap-3">
                 <div className="w-32">
-                  <NumField label="כמות (גרם)" value={grams} onChange={setGrams} />
+                  <NumField
+                    label={unit === "gram" ? "כמות (גרם)" : `כמות (${UNIT_LABELS[unit]})`}
+                    value={amount}
+                    onChange={setAmount}
+                    step={unit === "gram" ? "1" : "0.5"}
+                  />
                 </div>
                 <Button className="flex-1" onClick={addPicked}>
-                  <Plus className="size-4" /> הוספה ליומן
+                  <Plus className="size-4" /> הוספה ליומן ({grams} ג׳)
                 </Button>
               </div>
+
             </div>
           )}
 
