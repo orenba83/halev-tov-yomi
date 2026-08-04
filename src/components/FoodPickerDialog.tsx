@@ -197,7 +197,18 @@ export function FoodPickerDialog({
       return;
     }
     actions.addEntry({ date, meal, ...scale(selected, grams) });
-    if (!selected.id.startsWith("entry:")) actions.pushRecent(selected.id);
+    if (selected.id.startsWith("off:")) {
+      // שמירת מוצר מהמאגר העולמי במאגר הפרטי, כדי שיופיע בהיסטוריה ובמועדפים
+      const saved = actions.addCustomFood({
+        name: selected.name,
+        calories: selected.calories,
+        protein: selected.protein,
+        carbs: selected.carbs,
+        fat: selected.fat,
+      });
+      actions.pushRecent(saved.id);
+    } else if (!selected.id.startsWith("entry:")) actions.pushRecent(selected.id);
+
     toast.success(`${selected.name} נוסף ליומן`);
     close();
   };
