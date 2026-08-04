@@ -576,7 +576,7 @@ export function EditEntryDialog({ entry, onClose }: { entry: LogEntry | null; on
 
   return (
     <Dialog open={!!entry} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="text-right sm:max-w-sm">
+      <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] overflow-x-hidden p-4 text-right sm:w-full sm:max-w-sm sm:p-6">
         <DialogHeader className="text-right">
           <DialogTitle>עריכת פריט</DialogTitle>
           <DialogDescription>שינוי הכמות מעדכן אוטומטית את הערכים</DialogDescription>
