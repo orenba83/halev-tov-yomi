@@ -255,7 +255,7 @@ export function FoodPickerDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : close())}>
-        <DialogContent className="max-h-[90vh] gap-4 overflow-y-auto text-right sm:max-w-lg">
+        <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] max-h-[90vh] gap-4 overflow-y-auto overflow-x-hidden p-4 text-right sm:w-full sm:max-w-lg sm:p-6">
           <DialogHeader className="text-center sm:text-center">
             <DialogTitle className="text-center">{MEALS.find((m) => m.key === meal)?.label ?? "הוספת מזון"}</DialogTitle>
             <DialogDescription className="sr-only">חיפוש במאגר, היסטוריה, מועדפים, הזנה ידנית או AI</DialogDescription>
@@ -576,7 +576,7 @@ export function EditEntryDialog({ entry, onClose }: { entry: LogEntry | null; on
 
   return (
     <Dialog open={!!entry} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="text-right sm:max-w-sm">
+      <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] overflow-x-hidden p-4 text-right sm:w-full sm:max-w-sm sm:p-6">
         <DialogHeader className="text-right">
           <DialogTitle>עריכת פריט</DialogTitle>
           <DialogDescription>שינוי הכמות מעדכן אוטומטית את הערכים</DialogDescription>
