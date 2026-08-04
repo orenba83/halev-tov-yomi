@@ -87,7 +87,7 @@ export function WeightDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="text-right sm:max-w-sm">
+      <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] overflow-x-hidden p-4 text-right sm:w-full sm:max-w-sm sm:p-6">
         <DialogHeader className="text-right">
           <DialogTitle>{edit ? "עריכת שקילה" : "הוספת שקילה"}</DialogTitle>
         </DialogHeader>
@@ -147,7 +147,7 @@ export function MeasureDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="text-right sm:max-w-sm">
+      <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] overflow-x-hidden p-4 text-right sm:w-full sm:max-w-sm sm:p-6">
         <DialogHeader className="text-right">
           <DialogTitle>{edit ? "עריכת היקפים" : "מדידת היקפים"} (ס״מ)</DialogTitle>
         </DialogHeader>
@@ -199,7 +199,7 @@ export function StepsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="text-right sm:max-w-sm">
+      <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] overflow-x-hidden p-4 text-right sm:w-full sm:max-w-sm sm:p-6">
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Footprints className="size-5 text-primary" /> עדכון צעדים

@@ -62,7 +62,7 @@ export function MetricHistoryDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto text-right sm:max-w-sm">
+        <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] max-h-[85vh] overflow-y-auto overflow-x-hidden p-4 text-right sm:w-full sm:max-w-sm sm:p-6">
           <DialogHeader className="text-right">
             <DialogTitle>היסטוריית {meta.title}</DialogTitle>
             <DialogDescription>לפי יום בשבוע ותאריך</DialogDescription>

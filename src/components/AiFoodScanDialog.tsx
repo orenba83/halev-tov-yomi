@@ -171,7 +171,7 @@ export function AiFoodScanDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="max-h-[90vh] overflow-y-auto text-right sm:max-w-md">
+      <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 text-right sm:w-full sm:max-w-md sm:p-6">
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
