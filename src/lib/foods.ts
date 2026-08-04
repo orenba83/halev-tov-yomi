@@ -26,4 +26,34 @@ export const GLOBAL_FOODS: Food[] = [
   { id: "g22", name: "טופו", calories: 76, protein: 8, carbs: 1.9, fat: 4.8 },
   { id: "g23", name: "חלב 3%", calories: 61, protein: 3.3, carbs: 4.7, fat: 3.3 },
   { id: "g24", name: "שוקולד מריר 70%", calories: 598, protein: 7.8, carbs: 46, fat: 43 },
+
+  // ביצים לפי גודל
+  { id: "e1", name: "ביצה גודל S (45 ג׳)", calories: 143, protein: 12.6, carbs: 0.7, fat: 9.5, serving: 45 },
+  { id: "e2", name: "ביצה גודל M (55 ג׳)", calories: 143, protein: 12.6, carbs: 0.7, fat: 9.5, serving: 55 },
+  { id: "e3", name: "ביצה גודל L (63 ג׳)", calories: 143, protein: 12.6, carbs: 0.7, fat: 9.5, serving: 63 },
+  { id: "e4", name: "ביצה גודל XL (73 ג׳)", calories: 143, protein: 12.6, carbs: 0.7, fat: 9.5, serving: 73 },
+  { id: "e5", name: "חלבון ביצה", calories: 52, protein: 11, carbs: 0.7, fat: 0.2, serving: 33 },
+  { id: "e6", name: "חלמון ביצה", calories: 322, protein: 16, carbs: 3.6, fat: 27, serving: 17 },
+  { id: "e7", name: "ביצת עין מטוגנת", calories: 196, protein: 13.6, carbs: 0.8, fat: 15, serving: 60 },
+  { id: "e8", name: "חביתה משתי ביצים", calories: 170, protein: 12, carbs: 1, fat: 13, serving: 120 },
+
+  // יוגורטים
+  { id: "y1", name: "יוגורט טבעי 3%", calories: 61, protein: 3.5, carbs: 4.7, fat: 3, serving: 150 },
+  { id: "y2", name: "יוגורט טבעי 1.5%", calories: 50, protein: 3.8, carbs: 5, fat: 1.5, serving: 150 },
+  { id: "y3", name: "יוגורט טבעי 0%", calories: 40, protein: 4.2, carbs: 5.2, fat: 0.1, serving: 150 },
+  { id: "y4", name: "יוגורט יווני 2%", calories: 73, protein: 9, carbs: 3.8, fat: 2, serving: 150 },
+  { id: "y5", name: "יוגורט יווני 5%", calories: 97, protein: 8.7, carbs: 3.6, fat: 5, serving: 150 },
+  { id: "y6", name: "יוגורט עם פירות", calories: 95, protein: 3.3, carbs: 15, fat: 2.5, serving: 150 },
+  { id: "y7", name: "יוגורט פרו חלבון", calories: 62, protein: 10, carbs: 4.5, fat: 0.2, serving: 200 },
+  { id: "y8", name: "יוגורט כבשים", calories: 108, protein: 5.5, carbs: 5.4, fat: 7, serving: 150 },
+  { id: "y9", name: "יוגורט עיזים", calories: 70, protein: 3.6, carbs: 4.5, fat: 4, serving: 150 },
+  { id: "y10", name: "אשל 4.5%", calories: 74, protein: 3.6, carbs: 4, fat: 4.5, serving: 200 },
+  { id: "y11", name: "לבן 3%", calories: 62, protein: 3.6, carbs: 4.5, fat: 3, serving: 200 },
+  { id: "y12", name: "דנונה / מעדן חלב", calories: 105, protein: 3, carbs: 16, fat: 3, serving: 100 },
+
+  // לחמים ופחמימות נפוצות
+  { id: "b1", name: "פרוסת לחם אחיד", calories: 265, protein: 9, carbs: 49, fat: 3, serving: 30 },
+  { id: "b2", name: "פרכית אורז", calories: 387, protein: 8, carbs: 81, fat: 3, serving: 8 },
+  { id: "b3", name: "פיתה מלאה", calories: 262, protein: 9.5, carbs: 51, fat: 1.6, serving: 70 },
 ];
+

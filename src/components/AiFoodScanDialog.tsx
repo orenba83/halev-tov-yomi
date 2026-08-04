@@ -16,6 +16,13 @@ import { analyzeFoodImage } from "@/lib/ai.functions";
 import { cn } from "@/lib/utils";
 import { MEALS, type MealKey } from "@/lib/types";
 
+/** מונע מהמקלדת להסתיר את שורת ההקלדה במובייל */
+const scrollIntoViewOnFocus = (e: { currentTarget: HTMLElement }) => {
+  const el = e.currentTarget;
+  setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+};
+
+
 export interface ScanValues {
   name: string;
   grams: string;
@@ -49,6 +56,8 @@ export function AiFoodScanDialog({
   const [hint, setHint] = useState("");
   const [values, setValues] = useState<ScanValues>(EMPTY);
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
 
   const reset = () => {
     setImage(null);
@@ -183,6 +192,13 @@ export function AiFoodScanDialog({
           className="hidden"
           onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
         />
+        <input
+          ref={galleryRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+        />
 
         {!image && !started ? (
           <div className="space-y-3">
@@ -191,6 +207,7 @@ export function AiFoodScanDialog({
                 <Input
                   value={hint}
                   onChange={(e) => setHint(e.target.value)}
+                  onFocus={scrollIntoViewOnFocus}
                   onKeyDown={(e) => e.key === "Enter" && sendHint()}
                   placeholder="למשל: פיתה עם חומוס, ביצה קשה וסלט"
                 />
@@ -199,15 +216,21 @@ export function AiFoodScanDialog({
                 </Button>
               </>
             ) : (
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="grid w-full place-items-center gap-2 rounded-3xl border-2 border-dashed border-border py-10 text-muted-foreground hover:bg-accent"
-              >
-                <Camera className="size-8 text-primary" />
-                <span className="text-sm font-medium">פתיחת מצלמה / בחירת תמונה</span>
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="grid w-full place-items-center gap-2 rounded-3xl border-2 border-dashed border-border py-10 text-muted-foreground hover:bg-accent"
+                >
+                  <Camera className="size-8 text-primary" />
+                  <span className="text-sm font-medium">פתיחת מצלמה</span>
+                </button>
+                <Button variant="outline" className="w-full" onClick={() => galleryRef.current?.click()}>
+                  <ImagePlus className="size-4" /> העלאת תמונה מהגלריה
+                </Button>
+              </div>
             )}
           </div>
+
         ) : (
           <div className="space-y-3">
             {image && <img src={image} alt="התמונה שצולמה" className="h-40 w-full rounded-2xl object-cover" />}
@@ -232,10 +255,11 @@ export function AiFoodScanDialog({
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="sticky bottom-0 z-10 flex gap-2 bg-background pb-1 pt-2">
               <Input
                 value={hint}
                 onChange={(e) => setHint(e.target.value)}
+                onFocus={scrollIntoViewOnFocus}
                 onKeyDown={(e) => e.key === "Enter" && sendHint()}
                 placeholder="לדוגמה: זה עם חצי כוס אורז בלבד"
               />
@@ -247,11 +271,21 @@ export function AiFoodScanDialog({
                 variant="outline"
                 className="shrink-0 rounded-full"
                 onClick={() => fileRef.current?.click()}
-                aria-label="תמונה אחרת"
+                aria-label="צילום מחדש"
+              >
+                <Camera className="size-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="outline"
+                className="shrink-0 rounded-full"
+                onClick={() => galleryRef.current?.click()}
+                aria-label="העלאת תמונה"
               >
                 <ImagePlus className="size-4" />
               </Button>
             </div>
+
 
             <div className="grid grid-cols-2 gap-2">
               <Field label="שם המנה" value={values.name} onChange={(v) => setValues({ ...values, name: v })} />

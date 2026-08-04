@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Camera, Clock, Heart, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Camera, Clock, Heart, Loader2, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,10 +13,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { actions, allFoods, todayKey, useStore } from "@/lib/store";
+import { searchProducts } from "@/lib/foodsearch.functions";
 import { cn } from "@/lib/utils";
 import { MEALS, type Food, type LogEntry, type MealKey } from "@/lib/types";
 import { UNIT_LABELS, unitGrams, type UnitKey } from "@/lib/units";
 import { AiFoodScanDialog } from "./AiFoodScanDialog";
+
+/** מונע מהמקלדת להסתיר את שורת ההקלדה במובייל */
+export const scrollIntoViewOnFocus = (e: { currentTarget: HTMLElement }) => {
+  const el = e.currentTarget;
+  setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+};
+
 
 export interface PickedFood {
   name: string;
@@ -60,8 +68,10 @@ export function NumField({
         dir="ltr"
         className="text-right"
         value={value}
+        onFocus={scrollIntoViewOnFocus}
         onChange={(e) => onChange(e.target.value)}
       />
+
     </div>
   );
 }
@@ -94,11 +104,42 @@ export function FoodPickerDialog({
 
 
   const foods = allFoods(state);
-  const results = useMemo(() => {
+  const [remote, setRemote] = useState<Food[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const localResults = useMemo(() => {
     const q = query.trim();
     if (!q) return foods.slice(0, 14);
     return foods.filter((f) => f.name.includes(q)).slice(0, 25);
   }, [query, foods]);
+
+  /** חיפוש במאגר המוצרים העולמי (Open Food Facts) */
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setRemote([]);
+      setSearching(false);
+      return;
+    }
+    let alive = true;
+    setSearching(true);
+    const t = setTimeout(() => {
+      searchProducts({ data: { q } })
+        .then((r) => alive && setRemote(r))
+        .catch(() => alive && setRemote([]))
+        .finally(() => alive && setSearching(false));
+    }, 450);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [query]);
+
+  const results = useMemo(() => {
+    const seen = new Set(localResults.map((f) => f.name.trim()));
+    return [...localResults, ...remote.filter((f) => !seen.has(f.name.trim()))];
+  }, [localResults, remote]);
+
 
   /** היסטוריה: כל מה שנאכל בפועל (לפי יומן) + מועדפים ומוצרים אחרונים מהמאגר */
   const history = useMemo(() => {
@@ -158,7 +199,18 @@ export function FoodPickerDialog({
       return;
     }
     actions.addEntry({ date, meal, ...scale(selected, grams) });
-    if (!selected.id.startsWith("entry:")) actions.pushRecent(selected.id);
+    if (selected.id.startsWith("off:")) {
+      // שמירת מוצר מהמאגר העולמי במאגר הפרטי, כדי שיופיע בהיסטוריה ובמועדפים
+      const saved = actions.addCustomFood({
+        name: selected.name,
+        calories: selected.calories,
+        protein: selected.protein,
+        carbs: selected.carbs,
+        fat: selected.fat,
+      });
+      actions.pushRecent(saved.id);
+    } else if (!selected.id.startsWith("entry:")) actions.pushRecent(selected.id);
+
     toast.success(`${selected.name} נוסף ליומן`);
     close();
   };
@@ -253,10 +305,15 @@ export function FoodPickerDialog({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="חיפוש מוצר במאגר"
+              onFocus={scrollIntoViewOnFocus}
+              placeholder="חיפוש מוצר במאגר (כולל מאגר מוצרים עולמי)"
               className="rounded-2xl bg-muted pr-9"
             />
+            {searching && (
+              <Loader2 className="absolute top-1/2 left-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
           </div>
+
 
           {query.trim() ? (
             <FoodList items={results} selected={selected} onSelect={pick} />
@@ -305,6 +362,8 @@ export function FoodPickerDialog({
                     <Label>שם המוצר *</Label>
                     <Input
                       value={manual.name}
+                      onFocus={scrollIntoViewOnFocus}
+
                       onChange={(e) => setManual({ ...manual, name: e.target.value })}
                       placeholder="למשל: עוגיית שיבולת שועל"
                     />
