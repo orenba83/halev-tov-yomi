@@ -255,10 +255,11 @@ export function AiFoodScanDialog({
               )}
             </div>
 
-            <div className="flex gap-2">
+            <div className="sticky bottom-0 z-10 flex gap-2 bg-background pb-1 pt-2">
               <Input
                 value={hint}
                 onChange={(e) => setHint(e.target.value)}
+                onFocus={scrollIntoViewOnFocus}
                 onKeyDown={(e) => e.key === "Enter" && sendHint()}
                 placeholder="לדוגמה: זה עם חצי כוס אורז בלבד"
               />
@@ -270,11 +271,21 @@ export function AiFoodScanDialog({
                 variant="outline"
                 className="shrink-0 rounded-full"
                 onClick={() => fileRef.current?.click()}
-                aria-label="תמונה אחרת"
+                aria-label="צילום מחדש"
+              >
+                <Camera className="size-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="outline"
+                className="shrink-0 rounded-full"
+                onClick={() => galleryRef.current?.click()}
+                aria-label="העלאת תמונה"
               >
                 <ImagePlus className="size-4" />
               </Button>
             </div>
+
 
             <div className="grid grid-cols-2 gap-2">
               <Field label="שם המנה" value={values.name} onChange={(v) => setValues({ ...values, name: v })} />
