@@ -362,6 +362,8 @@ export function FoodPickerDialog({
                     <Label>שם המוצר *</Label>
                     <Input
                       value={manual.name}
+                      onFocus={scrollIntoViewOnFocus}
+
                       onChange={(e) => setManual({ ...manual, name: e.target.value })}
                       placeholder="למשל: עוגיית שיבולת שועל"
                     />
