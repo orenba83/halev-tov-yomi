@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Camera, Clock, Heart, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Camera, Clock, Heart, Loader2, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,10 +13,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { actions, allFoods, todayKey, useStore } from "@/lib/store";
+import { searchProducts } from "@/lib/foodsearch.functions";
 import { cn } from "@/lib/utils";
 import { MEALS, type Food, type LogEntry, type MealKey } from "@/lib/types";
 import { UNIT_LABELS, unitGrams, type UnitKey } from "@/lib/units";
 import { AiFoodScanDialog } from "./AiFoodScanDialog";
+
+/** מונע מהמקלדת להסתיר את שורת ההקלדה במובייל */
+export const scrollIntoViewOnFocus = (e: { currentTarget: HTMLElement }) => {
+  const el = e.currentTarget;
+  setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+};
+
 
 export interface PickedFood {
   name: string;
