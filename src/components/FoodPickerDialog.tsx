@@ -68,8 +68,10 @@ export function NumField({
         dir="ltr"
         className="text-right"
         value={value}
+        onFocus={scrollIntoViewOnFocus}
         onChange={(e) => onChange(e.target.value)}
       />
+
     </div>
   );
 }
