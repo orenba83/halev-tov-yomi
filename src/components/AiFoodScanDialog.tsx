@@ -183,6 +183,13 @@ export function AiFoodScanDialog({
           className="hidden"
           onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
         />
+        <input
+          ref={galleryRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+        />
 
         {!image && !started ? (
           <div className="space-y-3">
@@ -191,6 +198,7 @@ export function AiFoodScanDialog({
                 <Input
                   value={hint}
                   onChange={(e) => setHint(e.target.value)}
+                  onFocus={scrollIntoViewOnFocus}
                   onKeyDown={(e) => e.key === "Enter" && sendHint()}
                   placeholder="למשל: פיתה עם חומוס, ביצה קשה וסלט"
                 />
@@ -199,15 +207,21 @@ export function AiFoodScanDialog({
                 </Button>
               </>
             ) : (
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="grid w-full place-items-center gap-2 rounded-3xl border-2 border-dashed border-border py-10 text-muted-foreground hover:bg-accent"
-              >
-                <Camera className="size-8 text-primary" />
-                <span className="text-sm font-medium">פתיחת מצלמה / בחירת תמונה</span>
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="grid w-full place-items-center gap-2 rounded-3xl border-2 border-dashed border-border py-10 text-muted-foreground hover:bg-accent"
+                >
+                  <Camera className="size-8 text-primary" />
+                  <span className="text-sm font-medium">פתיחת מצלמה</span>
+                </button>
+                <Button variant="outline" className="w-full" onClick={() => galleryRef.current?.click()}>
+                  <ImagePlus className="size-4" /> העלאת תמונה מהגלריה
+                </Button>
+              </div>
             )}
           </div>
+
         ) : (
           <div className="space-y-3">
             {image && <img src={image} alt="התמונה שצולמה" className="h-40 w-full rounded-2xl object-cover" />}
