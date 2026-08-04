@@ -292,10 +292,15 @@ export function FoodPickerDialog({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="חיפוש מוצר במאגר"
+              onFocus={scrollIntoViewOnFocus}
+              placeholder="חיפוש מוצר במאגר (כולל מאגר מוצרים עולמי)"
               className="rounded-2xl bg-muted pr-9"
             />
+            {searching && (
+              <Loader2 className="absolute top-1/2 left-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
           </div>
+
 
           {query.trim() ? (
             <FoodList items={results} selected={selected} onSelect={pick} />
