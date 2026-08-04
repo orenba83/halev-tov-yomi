@@ -16,6 +16,13 @@ import { analyzeFoodImage } from "@/lib/ai.functions";
 import { cn } from "@/lib/utils";
 import { MEALS, type MealKey } from "@/lib/types";
 
+/** מונע מהמקלדת להסתיר את שורת ההקלדה במובייל */
+const scrollIntoViewOnFocus = (e: { currentTarget: HTMLElement }) => {
+  const el = e.currentTarget;
+  setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+};
+
+
 export interface ScanValues {
   name: string;
   grams: string;
@@ -49,6 +56,8 @@ export function AiFoodScanDialog({
   const [hint, setHint] = useState("");
   const [values, setValues] = useState<ScanValues>(EMPTY);
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
 
   const reset = () => {
     setImage(null);
