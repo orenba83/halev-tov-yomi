@@ -102,11 +102,42 @@ export function FoodPickerDialog({
 
 
   const foods = allFoods(state);
-  const results = useMemo(() => {
+  const [remote, setRemote] = useState<Food[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const localResults = useMemo(() => {
     const q = query.trim();
     if (!q) return foods.slice(0, 14);
     return foods.filter((f) => f.name.includes(q)).slice(0, 25);
   }, [query, foods]);
+
+  /** חיפוש במאגר המוצרים העולמי (Open Food Facts) */
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) {
+      setRemote([]);
+      setSearching(false);
+      return;
+    }
+    let alive = true;
+    setSearching(true);
+    const t = setTimeout(() => {
+      searchProducts({ data: { q } })
+        .then((r) => alive && setRemote(r))
+        .catch(() => alive && setRemote([]))
+        .finally(() => alive && setSearching(false));
+    }, 450);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [query]);
+
+  const results = useMemo(() => {
+    const seen = new Set(localResults.map((f) => f.name.trim()));
+    return [...localResults, ...remote.filter((f) => !seen.has(f.name.trim()))];
+  }, [localResults, remote]);
+
 
   /** היסטוריה: כל מה שנאכל בפועל (לפי יומן) + מועדפים ומוצרים אחרונים מהמאגר */
   const history = useMemo(() => {
