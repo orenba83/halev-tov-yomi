@@ -47,7 +47,7 @@ export function AiFoodScanDialog({
   meal: MealKey;
   onMealChange?: ((m: MealKey) => void) | undefined;
   date?: string | undefined;
-  mode?: "photo" | "barcode" | "text";
+  mode?: "photo" | "barcode" | "text" | "gallery";
 }) {
   const [image, setImage] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
@@ -67,10 +67,15 @@ export function AiFoodScanDialog({
     setValues(EMPTY);
     setBusy(false);
   };
-  /** פתיחת מצלמה מיידית כשנכנסים למצב צילום */
+  /** פתיחת מצלמה או גלריה מיידית כשנכנסים למצב צילום/העלאה */
   useEffect(() => {
-    if (open && mode !== "text") {
+    if (!open) return;
+    if (mode === "photo" || mode === "barcode") {
       const t = setTimeout(() => fileRef.current?.click(), 120);
+      return () => clearTimeout(t);
+    }
+    if (mode === "gallery") {
+      const t = setTimeout(() => galleryRef.current?.click(), 120);
       return () => clearTimeout(t);
     }
     return;
