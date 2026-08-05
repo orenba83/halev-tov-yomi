@@ -148,17 +148,33 @@ export function AiFoodScanDialog({
       toast.error("קלוריות לא תקינות");
       return;
     }
+    const per = 100 / g;
+    const p = +Number(values.protein || 0).toFixed(1);
+    const c = +Number(values.carbs || 0).toFixed(1);
+    const f = +Number(values.fat || 0).toFixed(1);
+    const name = values.name.trim();
     actions.addEntry({
       date,
       meal,
-      name: values.name.trim(),
+      name,
       grams: g,
       calories: Math.round(cal),
-      protein: +Number(values.protein || 0).toFixed(1),
-      carbs: +Number(values.carbs || 0).toFixed(1),
-      fat: +Number(values.fat || 0).toFixed(1),
+      protein: p,
+      carbs: c,
+      fat: f,
     });
-    toast.success("נוסף לארוחה");
+    // שמירת המוצר במאגר הפרטי כדי שיופיע בחיפוש ובהיסטוריה בפעם הבאה
+    const saved = actions.addCustomFood({
+      name,
+      calories: Math.round(cal * per),
+      protein: +(p * per).toFixed(1),
+      carbs: +(c * per).toFixed(1),
+      fat: +(f * per).toFixed(1),
+      serving: g,
+    });
+    actions.pushRecent(saved.id);
+    toast.success("נוסף לארוחה ולמאגר שלי");
+
     reset();
     onOpenChange(false);
   };
@@ -171,7 +187,13 @@ export function AiFoodScanDialog({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 text-right sm:w-full sm:max-w-md sm:p-6">
+      <DialogContent
+        className={cn(
+          "grid-cols-1 w-[calc(100vw-1.5rem)] overflow-y-auto overflow-x-hidden p-4 text-right sm:w-full sm:max-w-md sm:p-6",
+          "top-2 max-h-[85dvh] translate-y-0 sm:top-1/2 sm:max-h-[90vh] sm:-translate-y-1/2",
+        )}
+      >
+
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
