@@ -389,9 +389,14 @@ export function FoodPickerDialog({
                     <NumField label="פחמימות (ג׳)" value={manual.carbs} onChange={(v) => setManual({ ...manual, carbs: v })} />
                     <NumField label="שומן (ג׳)" value={manual.fat} onChange={(v) => setManual({ ...manual, fat: v })} />
                   </div>
-                  <Button className="w-full" onClick={addManual}>
-                    <Plus className="size-4" /> שמור והוסף ליומן
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button className="w-full" onClick={addManual}>
+                      <Plus className="size-4" /> שמור והוסף ליומן
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={saveManualOnly}>
+                      שמור למאגר
+                    </Button>
+                  </div>
                 </div>
               </details>
             </div>
