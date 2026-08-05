@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Droplets, Flame, Footprints, Plus, TrendingDown, UtensilsCrossed } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, MacroTile, Ring } from "@/components/Stat";
@@ -48,8 +48,11 @@ function Dashboard() {
       ? +((weightData.at(-1)?.value ?? 0) - (weightData[0]?.value ?? 0)).toFixed(1)
       : 0;
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "בוקר טוב" : hour < 18 ? "צהריים טובים" : "ערב טוב";
+  const [greeting, setGreeting] = useState("שלום");
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(hour < 12 ? "בוקר טוב" : hour < 18 ? "צהריים טובים" : "ערב טוב");
+  }, []);
   const nextMeal =
     MEALS.find((m) => !state.entries.some((e) => e.date === date && e.meal === m.key)) ?? MEALS[3]!;
 

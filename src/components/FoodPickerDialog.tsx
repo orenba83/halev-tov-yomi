@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Clock, Heart, Loader2, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
+import { Camera, Clock, Heart, ImagePlus, Loader2, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -242,12 +242,12 @@ export function FoodPickerDialog({
   };
 
   const [tab, setTab] = useState<"history" | "favorites" | "new">("new");
-  const [scanMode, setScanMode] = useState<"photo" | "barcode" | "text">("photo");
+  const [scanMode, setScanMode] = useState<"photo" | "barcode" | "text" | "gallery">("photo");
   const favorites = useMemo(
     () => state.favorites.map((id) => foods.find((f) => f.id === id)).filter(Boolean) as Food[],
     [state.favorites, foods],
   );
-  const openScan = (m: "photo" | "barcode" | "text") => {
+  const openScan = (m: "photo" | "barcode" | "text" | "gallery") => {
     setScanMode(m);
     setScan(true);
   };
@@ -337,18 +337,19 @@ export function FoodPickerDialog({
                 <p className="text-sm text-muted-foreground">פרט ככל האפשר את המנה כדי לקבל תוצאה מדויקת.</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 {([
-                  { key: "photo", label: "צילום מנה או ברקוד", icon: Camera },
-                  { key: "text", label: "תיאור בטקסט", icon: MessageSquareText },
+                  { key: "photo", label: "צילום", icon: Camera },
+                  { key: "gallery", label: "העלאה", icon: ImagePlus },
+                  { key: "text", label: "טקסט", icon: MessageSquareText },
                 ] as const).map((c) => (
                   <button
                     key={c.key}
                     onClick={() => openScan(c.key)}
-                    className="flex flex-col items-center gap-2 rounded-3xl border border-border bg-card px-2 py-5 text-center transition-colors hover:bg-accent"
+                    className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-4 text-center transition-colors hover:bg-accent"
                   >
-                    <c.icon className="size-7 text-foreground" />
-                    <span className="text-sm font-bold leading-tight">{c.label}</span>
+                    <c.icon className="size-6 text-foreground" />
+                    <span className="text-xs font-bold leading-tight">{c.label}</span>
                   </button>
                 ))}
               </div>

@@ -47,7 +47,7 @@ export function AiFoodScanDialog({
   meal: MealKey;
   onMealChange?: ((m: MealKey) => void) | undefined;
   date?: string | undefined;
-  mode?: "photo" | "barcode" | "text";
+  mode?: "photo" | "barcode" | "text" | "gallery";
 }) {
   const [image, setImage] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
@@ -67,10 +67,15 @@ export function AiFoodScanDialog({
     setValues(EMPTY);
     setBusy(false);
   };
-  /** פתיחת מצלמה מיידית כשנכנסים למצב צילום */
+  /** פתיחת מצלמה או גלריה מיידית כשנכנסים למצב צילום/העלאה */
   useEffect(() => {
-    if (open && mode !== "text") {
+    if (!open) return;
+    if (mode === "photo" || mode === "barcode") {
       const t = setTimeout(() => fileRef.current?.click(), 120);
+      return () => clearTimeout(t);
+    }
+    if (mode === "gallery") {
+      const t = setTimeout(() => galleryRef.current?.click(), 120);
       return () => clearTimeout(t);
     }
     return;
@@ -197,12 +202,14 @@ export function AiFoodScanDialog({
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            {mode === "text" ? "תיאור בטקסט" : "צילום מנה או ברקוד"}
+            {mode === "text" ? "תיאור בטקסט" : mode === "gallery" ? "העלאת תמונה" : "צילום מנה או ברקוד"}
           </DialogTitle>
           <DialogDescription>
             {mode === "text"
               ? "פרטו ככל האפשר את המנה כדי לקבל תוצאה מדויקת"
-              : "ה-AI יזהה מה בתמונה, תאשרו יחד את הערכים ואז נוסיף לארוחה"}
+              : mode === "gallery"
+                ? "בחרו תמונה מהגלריה — ה-AI יזהה את המנה ויאשר את הערכים"
+                : "ה-AI יזהה מה בתמונה, תאשרו יחד את הערכים ואז נוסיף לארוחה"}
           </DialogDescription>
         </DialogHeader>
 
