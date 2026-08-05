@@ -269,7 +269,7 @@ export function FoodPickerDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : close())}>
-        <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] max-h-[90vh] gap-4 overflow-y-auto overflow-x-hidden p-4 text-right sm:w-full sm:max-w-lg sm:p-6">
+        <DialogContent className="grid-cols-1 top-2 translate-y-0 w-[calc(100vw-1.5rem)] max-h-[85vh] gap-4 overflow-y-auto overflow-x-hidden p-4 text-right sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg sm:max-h-[90vh] sm:p-6">
           <DialogHeader className="text-center sm:text-center">
             <DialogTitle className="text-center">{MEALS.find((m) => m.key === meal)?.label ?? "הוספת מזון"}</DialogTitle>
             <DialogDescription className="sr-only">חיפוש במאגר, היסטוריה, מועדפים, הזנה ידנית או AI</DialogDescription>
