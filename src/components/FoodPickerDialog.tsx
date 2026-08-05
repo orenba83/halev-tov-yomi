@@ -217,28 +217,42 @@ export function FoodPickerDialog({
 
 
 
-  const addManual = () => {
+  /** אימות + שמירה למאגר הפרטי. מחזיר את המוצר או null */
+  const saveManual = () => {
     const cal = Number(manual.calories);
     const p = Number(manual.protein || 0);
     const c = Number(manual.carbs || 0);
     const f = Number(manual.fat || 0);
     if (!manual.name.trim()) {
       toast.error("יש להזין שם מוצר");
-      return;
+      return null;
     }
     if (!Number.isFinite(cal) || cal <= 0) {
       toast.error("יש להזין קלוריות חיוביות");
-      return;
+      return null;
     }
     if ([p, c, f].some((v) => !Number.isFinite(v) || v < 0)) {
       toast.error("ערכי מאקרו לא יכולים להיות שליליים");
-      return;
+      return null;
     }
-    const food = actions.addCustomFood({ name: manual.name.trim(), calories: cal, protein: p, carbs: c, fat: f });
+    return actions.addCustomFood({ name: manual.name.trim(), calories: cal, protein: p, carbs: c, fat: f });
+  };
+
+  const addManual = () => {
+    const food = saveManual();
+    if (!food) return;
     actions.addEntry({ date, meal, ...scale(food, 100) });
     actions.pushRecent(food.id);
     toast.success("המוצר נוסף למאגר הפרטי וליומן");
     close();
+  };
+
+  const saveManualOnly = () => {
+    const food = saveManual();
+    if (!food) return;
+    actions.pushRecent(food.id);
+    toast.success("המוצר נשמר במאגר הפרטי");
+    setManual({ name: "", calories: "", protein: "", carbs: "", fat: "" });
   };
 
   const [tab, setTab] = useState<"history" | "favorites" | "new">("new");
