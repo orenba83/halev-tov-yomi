@@ -217,28 +217,42 @@ export function FoodPickerDialog({
 
 
 
-  const addManual = () => {
+  /** אימות + שמירה למאגר הפרטי. מחזיר את המוצר או null */
+  const saveManual = () => {
     const cal = Number(manual.calories);
     const p = Number(manual.protein || 0);
     const c = Number(manual.carbs || 0);
     const f = Number(manual.fat || 0);
     if (!manual.name.trim()) {
       toast.error("יש להזין שם מוצר");
-      return;
+      return null;
     }
     if (!Number.isFinite(cal) || cal <= 0) {
       toast.error("יש להזין קלוריות חיוביות");
-      return;
+      return null;
     }
     if ([p, c, f].some((v) => !Number.isFinite(v) || v < 0)) {
       toast.error("ערכי מאקרו לא יכולים להיות שליליים");
-      return;
+      return null;
     }
-    const food = actions.addCustomFood({ name: manual.name.trim(), calories: cal, protein: p, carbs: c, fat: f });
+    return actions.addCustomFood({ name: manual.name.trim(), calories: cal, protein: p, carbs: c, fat: f });
+  };
+
+  const addManual = () => {
+    const food = saveManual();
+    if (!food) return;
     actions.addEntry({ date, meal, ...scale(food, 100) });
     actions.pushRecent(food.id);
     toast.success("המוצר נוסף למאגר הפרטי וליומן");
     close();
+  };
+
+  const saveManualOnly = () => {
+    const food = saveManual();
+    if (!food) return;
+    actions.pushRecent(food.id);
+    toast.success("המוצר נשמר במאגר הפרטי");
+    setManual({ name: "", calories: "", protein: "", carbs: "", fat: "" });
   };
 
   const [tab, setTab] = useState<"history" | "favorites" | "new">("new");
@@ -255,7 +269,7 @@ export function FoodPickerDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : close())}>
-        <DialogContent className="grid-cols-1 w-[calc(100vw-1.5rem)] max-h-[90vh] gap-4 overflow-y-auto overflow-x-hidden p-4 text-right sm:w-full sm:max-w-lg sm:p-6">
+        <DialogContent className="grid-cols-1 top-2 translate-y-0 w-[calc(100vw-1.5rem)] max-h-[85vh] gap-4 overflow-y-auto overflow-x-hidden p-4 text-right sm:top-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg sm:max-h-[90vh] sm:p-6">
           <DialogHeader className="text-center sm:text-center">
             <DialogTitle className="text-center">{MEALS.find((m) => m.key === meal)?.label ?? "הוספת מזון"}</DialogTitle>
             <DialogDescription className="sr-only">חיפוש במאגר, היסטוריה, מועדפים, הזנה ידנית או AI</DialogDescription>
@@ -375,9 +389,14 @@ export function FoodPickerDialog({
                     <NumField label="פחמימות (ג׳)" value={manual.carbs} onChange={(v) => setManual({ ...manual, carbs: v })} />
                     <NumField label="שומן (ג׳)" value={manual.fat} onChange={(v) => setManual({ ...manual, fat: v })} />
                   </div>
-                  <Button className="w-full" onClick={addManual}>
-                    <Plus className="size-4" /> שמור והוסף ליומן
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button className="w-full" onClick={addManual}>
+                      <Plus className="size-4" /> שמור והוסף ליומן
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={saveManualOnly}>
+                      שמור למאגר
+                    </Button>
+                  </div>
                 </div>
               </details>
             </div>

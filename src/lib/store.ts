@@ -170,9 +170,12 @@ function subscribe(cb: () => void) {
 }
 
 const getSnapshot = () => state;
+/** תמונת מצב יציבה ל-SSR/הידרציה — מונעת אי-התאמה בין השרת ללקוח */
+const serverState = state;
+const getServerSnapshot = () => serverState;
 
 export function useStore(): AppState {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 export const actions = {
