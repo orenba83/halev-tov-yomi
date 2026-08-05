@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Clock, Heart, Loader2, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
+import { Camera, Clock, Heart, ImagePlus, Loader2, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -242,12 +242,12 @@ export function FoodPickerDialog({
   };
 
   const [tab, setTab] = useState<"history" | "favorites" | "new">("new");
-  const [scanMode, setScanMode] = useState<"photo" | "barcode" | "text">("photo");
+  const [scanMode, setScanMode] = useState<"photo" | "barcode" | "text" | "gallery">("photo");
   const favorites = useMemo(
     () => state.favorites.map((id) => foods.find((f) => f.id === id)).filter(Boolean) as Food[],
     [state.favorites, foods],
   );
-  const openScan = (m: "photo" | "barcode" | "text") => {
+  const openScan = (m: "photo" | "barcode" | "text" | "gallery") => {
     setScanMode(m);
     setScan(true);
   };
