@@ -202,12 +202,14 @@ export function AiFoodScanDialog({
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            {mode === "text" ? "תיאור בטקסט" : "צילום מנה או ברקוד"}
+            {mode === "text" ? "תיאור בטקסט" : mode === "gallery" ? "העלאת תמונה" : "צילום מנה או ברקוד"}
           </DialogTitle>
           <DialogDescription>
             {mode === "text"
               ? "פרטו ככל האפשר את המנה כדי לקבל תוצאה מדויקת"
-              : "ה-AI יזהה מה בתמונה, תאשרו יחד את הערכים ואז נוסיף לארוחה"}
+              : mode === "gallery"
+                ? "בחרו תמונה מהגלריה — ה-AI יזהה את המנה ויאשר את הערכים"
+                : "ה-AI יזהה מה בתמונה, תאשרו יחד את הערכים ואז נוסיף לארוחה"}
           </DialogDescription>
         </DialogHeader>
 
