@@ -166,13 +166,15 @@ function SettingsPage() {
         </div>
       </Card>
 
+      <CloudCard />
+
       <HuaweiCard />
 
       <Card className="space-y-3">
 
         <h2 className="font-bold">נתונים וגיבוי</h2>
         <p className="text-xs text-muted-foreground">
-          כל הנתונים נשמרים מקומית במכשיר שלך. מומלץ לייצא גיבוי מדי פעם.
+          כשמחוברים לחשבון הנתונים נשמרים בענן ומסתנכרנים בין כל המכשירים. אפשר גם לייצא גיבוי מקומי.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="rounded-full" onClick={exportData}>
