@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "../components/AppShell";
 import { Toaster } from "../components/ui/sonner";
 import { useStore } from "../lib/store";
+import { startSync } from "../lib/sync";
 
 function NotFoundComponent() {
   return (
