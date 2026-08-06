@@ -1,6 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Download, Link2, Moon, RotateCcw, Sun, Upload, Watch } from "lucide-react";
+import {
+  CheckCircle2,
+  Cloud,
+  Download,
+  Link2,
+  LogOut,
+  Moon,
+  RefreshCw,
+  RotateCcw,
+  Sun,
+  Upload,
+  Watch,
+} from "lucide-react";
+import { pullNow, signOut, syncNow, useSyncInfo } from "@/lib/sync";
 import { toast } from "sonner";
 import { Card } from "@/components/Stat";
 import { NumField } from "@/components/FoodPickerDialog";
