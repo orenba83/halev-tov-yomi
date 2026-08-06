@@ -390,10 +390,10 @@ export function FoodPickerDialog({
                     <NumField label="שומן (ג׳)" value={manual.fat} onChange={(v) => setManual({ ...manual, fat: v })} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <Button className="w-full" onClick={addManual}>
-                      <Plus className="size-4" /> שמור והוסף ליומן
+                    <Button className="w-full rounded-full text-xs" size="sm" onClick={addManual}>
+                      <Plus className="size-3.5" /> שמור והוסף ליומן
                     </Button>
-                    <Button variant="outline" className="w-full" onClick={saveManualOnly}>
+                    <Button className="w-full rounded-full text-xs bg-primary text-primary-foreground hover:bg-primary/90" size="sm" onClick={saveManualOnly}>
                       שמור למאגר
                     </Button>
                   </div>
