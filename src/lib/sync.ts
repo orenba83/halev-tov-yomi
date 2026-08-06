@@ -69,7 +69,7 @@ async function push(userId: string) {
   const { error } = await supabase.from("user_state").upsert(
     {
       user_id: userId,
-      data: getState() as unknown as Record<string, unknown>,
+      data: getState() as never,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" },
