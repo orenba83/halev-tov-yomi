@@ -169,6 +169,20 @@ function subscribe(cb: () => void) {
   return () => listeners.delete(cb);
 }
 
+/** מנוי לשינויים ללקוחות שאינם רכיבי React (למשל שכבת הסנכרון) */
+export function subscribeStore(cb: () => void) {
+  load();
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
+}
+
+export function getState(): AppState {
+  load();
+  return state;
+}
+
 const getSnapshot = () => state;
 /** תמונת מצב יציבה ל-SSR/הידרציה — מונעת אי-התאמה בין השרת ללקוח */
 const serverState = state;
