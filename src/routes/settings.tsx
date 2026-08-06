@@ -1,6 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Download, Link2, Moon, RotateCcw, Sun, Upload, Watch } from "lucide-react";
+import {
+  CheckCircle2,
+  Cloud,
+  Download,
+  Link2,
+  LogOut,
+  Moon,
+  RefreshCw,
+  RotateCcw,
+  Sun,
+  Upload,
+  Watch,
+} from "lucide-react";
+import { pullNow, signOut, syncNow, useSyncInfo } from "@/lib/sync";
 import { toast } from "sonner";
 import { Card } from "@/components/Stat";
 import { NumField } from "@/components/FoodPickerDialog";
@@ -166,13 +179,15 @@ function SettingsPage() {
         </div>
       </Card>
 
+      <CloudCard />
+
       <HuaweiCard />
 
       <Card className="space-y-3">
 
         <h2 className="font-bold">נתונים וגיבוי</h2>
         <p className="text-xs text-muted-foreground">
-          כל הנתונים נשמרים מקומית במכשיר שלך. מומלץ לייצא גיבוי מדי פעם.
+          כשמחוברים לחשבון הנתונים נשמרים בענן ומסתנכרנים בין כל המכשירים. אפשר גם לייצא גיבוי מקומי.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="rounded-full" onClick={exportData}>
@@ -219,6 +234,94 @@ function MacroField({
       <NumField label={label} value={value} onChange={onChange} />
       <p className="mt-1 text-xs text-muted-foreground">≈ {Math.round(kcal)} קק״ל</p>
     </div>
+  );
+}
+
+function CloudCard() {
+  const sync = useSyncInfo();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+
+  const statusText: Record<string, string> = {
+    "signed-out": "לא מחובר — הנתונים נשמרים רק במכשיר הזה",
+    loading: "טוען נתונים מהענן…",
+    saving: "שומר בענן…",
+    synced: "מסונכרן",
+    error: "שגיאת סנכרון — ננסה שוב בשינוי הבא",
+  };
+
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Cloud className="size-5 text-primary" />
+        <h2 className="font-bold">סנכרון בין מכשירים</h2>
+      </div>
+
+      {sync.userId ? (
+        <>
+          <p className="text-xs text-muted-foreground">
+            מחוברת כ־<span dir="ltr">{sync.email}</span>
+          </p>
+          <div className="flex items-center gap-2 text-sm">
+            {sync.status === "synced" ? (
+              <CheckCircle2 className="size-4 text-primary" />
+            ) : (
+              <RefreshCw className={cn("size-4", sync.status !== "error" && "animate-spin")} />
+            )}
+            <span className={cn(sync.status === "error" && "text-destructive")}>
+              {statusText[sync.status]}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="rounded-full text-xs"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                await syncNow();
+                setBusy(false);
+                toast.success("הנתונים נשמרו בענן");
+              }}
+            >
+              <RefreshCw className="size-4" /> סנכרן עכשיו
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-full text-xs"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                await pullNow();
+                setBusy(false);
+                toast.success("הנתונים נטענו מהענן");
+              }}
+            >
+              <Download className="size-4" /> משיכה מהענן
+            </Button>
+            <Button
+              variant="ghost"
+              className="rounded-full text-xs text-destructive"
+              onClick={async () => {
+                await signOut();
+                toast.success("התנתקת");
+              }}
+            >
+              <LogOut className="size-4" /> התנתקות
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground">
+            התחברי עם חשבון גוגל או אימייל — כל הזנה תישמר בענן ותופיע גם בטלפון וגם במחשב.
+          </p>
+          <Button className="rounded-full" onClick={() => navigate({ to: "/auth" })}>
+            <Link2 className="size-4" /> התחברות וסנכרון
+          </Button>
+        </>
+      )}
+    </Card>
   );
 }
 
