@@ -112,6 +112,9 @@ function ThemeSync() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", settings.theme === "dark");
   }, [settings.theme]);
+  useEffect(() => {
+    startSync();
+  }, []);
   return null;
 }
 
