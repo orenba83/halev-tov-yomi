@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Bot, LayoutDashboard, LineChart, Moon, Settings, Sun, UtensilsCrossed } from "lucide-react";
+import { Activity, Bot, KeyRound, LayoutDashboard, LineChart, Moon, Settings, Sun, UtensilsCrossed } from "lucide-react";
 import type { ReactNode } from "react";
 import { actions, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ const NAV = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { settings } = useStore();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const inSettings = pathname === "/settings" || pathname === "/ai-settings";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -32,6 +33,18 @@ export function AppShell({ children }: { children: ReactNode }) {
             {settings.theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
         </div>
+        {inSettings && (
+          <div className="border-t border-border/50 bg-muted/20">
+            <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 py-2">
+              <Link to="/settings" className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium", pathname === "/settings" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground")}>
+                <Settings className="size-3.5" /> הגדרות כלליות
+              </Link>
+              <Link to="/ai-settings" className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium", pathname === "/ai-settings" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground")}>
+                <KeyRound className="size-3.5" /> AI ו־API
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
       <main className="mx-auto w-full max-w-5xl px-4 pt-5 pb-44 md:pb-28">{children}</main>
       <FabMenu />
