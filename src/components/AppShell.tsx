@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Bot, KeyRound, LayoutDashboard, LineChart, Moon, Settings, Sun, UtensilsCrossed } from "lucide-react";
+import { Activity, Bot, LayoutDashboard, LineChart, Moon, Settings, Sun, UtensilsCrossed } from "lucide-react";
 import type { ReactNode } from "react";
 import { actions, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,6 @@ const NAV = [
   { to: "/progress", label: "התקדמות", icon: LineChart },
   { to: "/advisor", label: "יועץ AI", icon: Bot },
   { to: "/settings", label: "הגדרות", icon: Settings },
-  { to: "/ai-settings", label: "AI", icon: KeyRound },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -37,7 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-5xl px-4 pt-5 pb-44 md:pb-28">{children}</main>
       <FabMenu />
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden">
-        <div className="mx-auto grid max-w-5xl grid-cols-6">
+        <div className="mx-auto grid max-w-5xl grid-cols-5">
           {NAV.map((item) => { const active = pathname === item.to; return <Link key={item.to} to={item.to} className={cn("flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors", active ? "text-primary" : "text-muted-foreground")}><item.icon className={cn("size-5", active && "stroke-[2.5]")} />{item.label}</Link>; })}
         </div>
       </nav>
