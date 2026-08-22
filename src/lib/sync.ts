@@ -26,9 +26,7 @@ export function useSyncInfo(): SyncInfo {
   return useSyncExternalStore(
     (cb) => {
       infoListeners.add(cb);
-      return () => {
-        infoListeners.delete(cb);
-      };
+      return () => infoListeners.delete(cb);
     },
     () => info,
     () => serverInfo,
@@ -37,6 +35,7 @@ export function useSyncInfo(): SyncInfo {
 
 let started = false;
 let suppress = false;
+let dirty = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribeStore: (() => void) | null = null;
 
@@ -44,24 +43,30 @@ async function pull(userId: string) {
   setInfo({ status: "loading" });
   const { data, error } = await supabase
     .from("user_state")
-    .select("data")
+    .select("data, updated_at")
     .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
+    console.error("[sync] pull failed", error);
     setInfo({ status: "error" });
-    return;
+    return false;
   }
 
   const remote = data?.data as AppState | undefined;
-  if (remote && Array.isArray((remote as AppState).entries)) {
-    suppress = true;
-    actions.importState(remote);
-    suppress = false;
+  if (remote && Array.isArray(remote.entries)) {
+    // Never replace newer local edits that have not reached the cloud yet.
+    if (!dirty) {
+      suppress = true;
+      actions.importState(remote);
+      suppress = false;
+    }
+    dirty = false;
     setInfo({ status: "synced", lastSyncedAt: Date.now() });
-  } else {
-    await push(userId);
+    return true;
   }
+
+  return push(userId);
 }
 
 async function push(userId: string) {
@@ -74,11 +79,21 @@ async function push(userId: string) {
     },
     { onConflict: "user_id" },
   );
-  setInfo(error ? { status: "error" } : { status: "synced", lastSyncedAt: Date.now() });
+
+  if (error) {
+    console.error("[sync] push failed", error);
+    setInfo({ status: "error" });
+    return false;
+  }
+
+  dirty = false;
+  setInfo({ status: "synced", lastSyncedAt: Date.now() });
+  return true;
 }
 
 function schedulePush() {
   if (suppress || !info.userId) return;
+  dirty = true;
   const userId = info.userId;
   if (timer) clearTimeout(timer);
   setInfo({ status: "saving" });
@@ -94,6 +109,7 @@ function attach(session: Session | null) {
     clearTimeout(timer);
     timer = null;
   }
+  dirty = false;
 
   if (!session?.user) {
     setInfo({ email: null, userId: null, status: "signed-out", lastSyncedAt: null });
@@ -106,26 +122,34 @@ function attach(session: Session | null) {
   });
 }
 
-/** מפעיל סנכרון ענן: משיכה בעליית האפליקציה ודחיפה בכל שינוי */
 export function startSync() {
   if (started || typeof window === "undefined") return;
   started = true;
 
   void supabase.auth.getSession().then(({ data }) => attach(data.session));
 
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "TOKEN_REFRESHED") return;
+  supabase.auth.onAuthStateChange((_event, session) => {
     attach(session);
+  });
+
+  // Refresh from the cloud when returning to the app on another device/tab.
+  window.addEventListener("focus", () => {
+    if (!info.userId) return;
+    if (dirty) void syncNow();
+    else void pullNow();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !info.userId) return;
+    if (dirty) void syncNow();
+    else void pullNow();
   });
 }
 
-/** דחיפה מיידית (כפתור "סנכרן עכשיו") */
 export async function syncNow() {
   if (!info.userId) return;
   await push(info.userId);
 }
 
-/** משיכה מחדש מהענן */
 export async function pullNow() {
   if (!info.userId) return;
   await pull(info.userId);
