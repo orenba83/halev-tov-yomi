@@ -5,7 +5,6 @@ import { actions, getState, subscribeStore } from "./store";
 import type { AppState } from "./types";
 
 export type SyncStatus = "signed-out" | "loading" | "synced" | "saving" | "error";
-
 type SyncInfo = { email: string | null; userId: string | null; status: SyncStatus; lastSyncedAt: number | null; error: string | null };
 let info: SyncInfo = { email: null, userId: null, status: "signed-out", lastSyncedAt: null, error: null };
 const infoListeners = new Set<() => void>();
@@ -21,23 +20,27 @@ let unsubscribeStore: (() => void) | null = null;
 
 const friendlyError = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error ?? "שגיאה לא ידועה");
-  if (/row-level security|permission denied|42501/i.test(message)) return "לחשבון אין הרשאה לטבלת הסנכרון בענן. יש לתקן את הרשאות Supabase.";
-  if (/relation .*user_state.*does not exist/i.test(message)) return "טבלת הסנכרון user_state לא קיימת ב-Supabase.";
+  if (/row-level security|permission denied|42501/i.test(message)) return "אין הרשאה לסנכרון בענן עבור החשבון הזה.";
+  if (/relation .*user_state.*does not exist|column .*user_state.*does not exist/i.test(message)) return "מבנה טבלת הסנכרון בענן אינו מעודכן.";
   return message;
 };
 
 async function pull(userId: string) {
   setInfo({ status: "loading", error: null });
-  const { data, error } = await supabase.from("user_state").select("data, updated_at").eq("user_id", userId).maybeSingle();
+  const { data, error } = await supabase.from("user_state").select("state, updated_at").eq("user_id", userId).maybeSingle();
   if (error) {
     const msg = friendlyError(error);
     console.error("[sync] pull failed", error);
     setInfo({ status: "error", error: msg });
     return false;
   }
-  const remote = data?.data as AppState | undefined;
+  const remote = data?.state as AppState | undefined;
   if (remote && Array.isArray(remote.entries)) {
-    if (!dirty) { suppress = true; actions.importState(remote); suppress = false; }
+    if (!dirty) {
+      suppress = true;
+      actions.importState(remote);
+      suppress = false;
+    }
     dirty = false;
     setInfo({ status: "synced", lastSyncedAt: Date.now(), error: null });
     return true;
@@ -47,7 +50,10 @@ async function pull(userId: string) {
 
 async function push(userId: string) {
   setInfo({ status: "saving", error: null });
-  const { error } = await supabase.from("user_state").upsert({ user_id: userId, data: getState() as never, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  const { error } = await supabase.from("user_state").upsert(
+    { user_id: userId, state: getState() as never, updated_at: new Date().toISOString() },
+    { onConflict: "user_id" },
+  );
   if (error) {
     const msg = friendlyError(error);
     console.error("[sync] push failed", error);
@@ -65,7 +71,7 @@ function schedulePush() {
   const userId = info.userId;
   if (timer) clearTimeout(timer);
   setInfo({ status: "saving", error: null });
-  timer = setTimeout(() => void push(userId), 1200);
+  timer = setTimeout(() => void push(userId), 800);
 }
 
 function attach(session: Session | null) {
