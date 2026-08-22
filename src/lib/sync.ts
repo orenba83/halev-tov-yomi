@@ -6,32 +6,12 @@ import type { AppState } from "./types";
 
 export type SyncStatus = "signed-out" | "loading" | "synced" | "saving" | "error";
 
-type SyncInfo = {
-  email: string | null;
-  userId: string | null;
-  status: SyncStatus;
-  lastSyncedAt: number | null;
-};
-
-let info: SyncInfo = { email: null, userId: null, status: "signed-out", lastSyncedAt: null };
+type SyncInfo = { email: string | null; userId: string | null; status: SyncStatus; lastSyncedAt: number | null; error: string | null };
+let info: SyncInfo = { email: null, userId: null, status: "signed-out", lastSyncedAt: null, error: null };
 const infoListeners = new Set<() => void>();
 const serverInfo = info;
-
-function setInfo(patch: Partial<SyncInfo>) {
-  info = { ...info, ...patch };
-  infoListeners.forEach((l) => l());
-}
-
-export function useSyncInfo(): SyncInfo {
-  return useSyncExternalStore(
-    (cb) => {
-      infoListeners.add(cb);
-      return () => infoListeners.delete(cb);
-    },
-    () => info,
-    () => serverInfo,
-  );
-}
+const setInfo = (patch: Partial<SyncInfo>) => { info = { ...info, ...patch }; infoListeners.forEach(l => l()); };
+export function useSyncInfo(): SyncInfo { return useSyncExternalStore(cb => { infoListeners.add(cb); return () => infoListeners.delete(cb); }, () => info, () => serverInfo); }
 
 let started = false;
 let suppress = false;
@@ -39,55 +19,43 @@ let dirty = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribeStore: (() => void) | null = null;
 
-async function pull(userId: string) {
-  setInfo({ status: "loading" });
-  const { data, error } = await supabase
-    .from("user_state")
-    .select("data, updated_at")
-    .eq("user_id", userId)
-    .maybeSingle();
+const friendlyError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error ?? "שגיאה לא ידועה");
+  if (/row-level security|permission denied|42501/i.test(message)) return "לחשבון אין הרשאה לטבלת הסנכרון בענן. יש לתקן את הרשאות Supabase.";
+  if (/relation .*user_state.*does not exist/i.test(message)) return "טבלת הסנכרון user_state לא קיימת ב-Supabase.";
+  return message;
+};
 
+async function pull(userId: string) {
+  setInfo({ status: "loading", error: null });
+  const { data, error } = await supabase.from("user_state").select("data, updated_at").eq("user_id", userId).maybeSingle();
   if (error) {
+    const msg = friendlyError(error);
     console.error("[sync] pull failed", error);
-    setInfo({ status: "error" });
+    setInfo({ status: "error", error: msg });
     return false;
   }
-
   const remote = data?.data as AppState | undefined;
   if (remote && Array.isArray(remote.entries)) {
-    // Never replace newer local edits that have not reached the cloud yet.
-    if (!dirty) {
-      suppress = true;
-      actions.importState(remote);
-      suppress = false;
-    }
+    if (!dirty) { suppress = true; actions.importState(remote); suppress = false; }
     dirty = false;
-    setInfo({ status: "synced", lastSyncedAt: Date.now() });
+    setInfo({ status: "synced", lastSyncedAt: Date.now(), error: null });
     return true;
   }
-
   return push(userId);
 }
 
 async function push(userId: string) {
-  setInfo({ status: "saving" });
-  const { error } = await supabase.from("user_state").upsert(
-    {
-      user_id: userId,
-      data: getState() as never,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" },
-  );
-
+  setInfo({ status: "saving", error: null });
+  const { error } = await supabase.from("user_state").upsert({ user_id: userId, data: getState() as never, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
   if (error) {
+    const msg = friendlyError(error);
     console.error("[sync] push failed", error);
-    setInfo({ status: "error" });
+    setInfo({ status: "error", error: msg });
     return false;
   }
-
   dirty = false;
-  setInfo({ status: "synced", lastSyncedAt: Date.now() });
+  setInfo({ status: "synced", lastSyncedAt: Date.now(), error: null });
   return true;
 }
 
@@ -96,65 +64,29 @@ function schedulePush() {
   dirty = true;
   const userId = info.userId;
   if (timer) clearTimeout(timer);
-  setInfo({ status: "saving" });
+  setInfo({ status: "saving", error: null });
   timer = setTimeout(() => void push(userId), 1200);
 }
 
 function attach(session: Session | null) {
-  if (unsubscribeStore) {
-    unsubscribeStore();
-    unsubscribeStore = null;
-  }
-  if (timer) {
-    clearTimeout(timer);
-    timer = null;
-  }
+  if (unsubscribeStore) { unsubscribeStore(); unsubscribeStore = null; }
+  if (timer) { clearTimeout(timer); timer = null; }
   dirty = false;
-
-  if (!session?.user) {
-    setInfo({ email: null, userId: null, status: "signed-out", lastSyncedAt: null });
-    return;
-  }
-
-  setInfo({ email: session.user.email ?? null, userId: session.user.id, status: "loading" });
-  void pull(session.user.id).then(() => {
-    unsubscribeStore = subscribeStore(schedulePush);
-  });
+  if (!session?.user) { setInfo({ email: null, userId: null, status: "signed-out", lastSyncedAt: null, error: null }); return; }
+  setInfo({ email: session.user.email ?? null, userId: session.user.id, status: "loading", error: null });
+  void pull(session.user.id).then(() => { if (info.userId === session.user.id) unsubscribeStore = subscribeStore(schedulePush); });
 }
 
 export function startSync() {
   if (started || typeof window === "undefined") return;
   started = true;
-
   void supabase.auth.getSession().then(({ data }) => attach(data.session));
-
-  supabase.auth.onAuthStateChange((_event, session) => {
-    attach(session);
-  });
-
-  // Refresh from the cloud when returning to the app on another device/tab.
-  window.addEventListener("focus", () => {
-    if (!info.userId) return;
-    if (dirty) void syncNow();
-    else void pullNow();
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible" || !info.userId) return;
-    if (dirty) void syncNow();
-    else void pullNow();
-  });
+  supabase.auth.onAuthStateChange((_event, session) => attach(session));
+  const refresh = () => { if (!info.userId) return; if (dirty) void syncNow(); else void pullNow(); };
+  window.addEventListener("focus", refresh);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
 }
 
-export async function syncNow() {
-  if (!info.userId) return;
-  await push(info.userId);
-}
-
-export async function pullNow() {
-  if (!info.userId) return;
-  await pull(info.userId);
-}
-
-export async function signOut() {
-  await supabase.auth.signOut();
-}
+export async function syncNow(): Promise<boolean> { if (!info.userId) return false; return push(info.userId); }
+export async function pullNow(): Promise<boolean> { if (!info.userId) return false; return pull(info.userId); }
+export async function signOut() { await supabase.auth.signOut(); }
