@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdvisorRouteImport } from './routes/advisor'
+import { Route as AiSettingsRouteImport } from './routes/ai-settings'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as ProgressRouteImport } from './routes/progress'
@@ -26,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdvisorRoute = AdvisorRouteImport.update({
   id: '/advisor',
   path: '/advisor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiSettingsRoute = AiSettingsRouteImport.update({
+  id: '/ai-settings',
+  path: '/ai-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -62,6 +68,7 @@ const MealMealRoute = MealMealRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
+  '/ai-settings': typeof AiSettingsRoute
   '/auth': typeof AuthRoute
   '/log': typeof LogRoute
   '/progress': typeof ProgressRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
+  '/ai-settings': typeof AiSettingsRoute
   '/auth': typeof AuthRoute
   '/log': typeof LogRoute
   '/progress': typeof ProgressRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/advisor': typeof AdvisorRoute
+  '/ai-settings': typeof AiSettingsRoute
   '/auth': typeof AuthRoute
   '/log': typeof LogRoute
   '/progress': typeof ProgressRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/advisor'
+    | '/ai-settings'
     | '/auth'
     | '/log'
     | '/progress'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/advisor'
+    | '/ai-settings'
     | '/auth'
     | '/log'
     | '/progress'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/advisor'
+    | '/ai-settings'
     | '/auth'
     | '/log'
     | '/progress'
@@ -126,6 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdvisorRoute: typeof AdvisorRoute
+  AiSettingsRoute: typeof AiSettingsRoute
   AuthRoute: typeof AuthRoute
   LogRoute: typeof LogRoute
   ProgressRoute: typeof ProgressRoute
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/advisor'
       fullPath: '/advisor'
       preLoaderRoute: typeof AdvisorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-settings': {
+      id: '/ai-settings'
+      path: '/ai-settings'
+      fullPath: '/ai-settings'
+      preLoaderRoute: typeof AiSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -198,6 +218,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdvisorRoute: AdvisorRoute,
+  AiSettingsRoute: AiSettingsRoute,
   AuthRoute: AuthRoute,
   LogRoute: LogRoute,
   ProgressRoute: ProgressRoute,
