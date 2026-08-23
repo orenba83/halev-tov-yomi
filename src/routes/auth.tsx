@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/Stat";
 import { getSupabaseEnv, supabase } from "@/integrations/supabase/client";
-import { sharedLogin } from "@/lib/sharedAuth.functions";
 import {
   SHARED_PASSWORD_UI,
   SHARED_USERNAME_HE,
+  clearSharedSession,
+  hasSharedSession,
   isSharedPassword,
   isSharedUsername,
+  setSharedSession,
 } from "@/lib/sharedAccount";
+import { attachSharedSession } from "@/lib/sync";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -33,9 +36,14 @@ function AuthPage() {
   const [username, setUsername] = useState(SHARED_USERNAME_HE);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const configured = typeof window !== "undefined" ? !!getSupabaseEnv() : true;
+  const configured = true;
 
   useEffect(() => {
+    if (hasSharedSession()) {
+      attachSharedSession();
+      void navigate({ to: "/settings" });
+      return;
+    }
     if (!getSupabaseEnv()) return;
 
     let unsub: (() => void) | undefined;
@@ -61,34 +69,18 @@ function AuthPage() {
   }, [navigate]);
 
   const login = async () => {
-    if (!configured) {
-      toast.error("סנכרון בענן לא מוגדר");
-      return;
-    }
     if (!isSharedUsername(username) || !isSharedPassword(password)) {
       toast.error(`יש להזין ${SHARED_USERNAME_HE} וסיסמה ${SHARED_PASSWORD_UI}`);
       return;
     }
     setBusy(true);
     try {
-      const result = await sharedLogin({
-        data: { username: username.trim(), password },
-      });
-
-      if (!result.ok) {
-        toast.error(result.message);
-        return;
-      }
-
-      const { error } = await supabase.auth.setSession({
-        access_token: result.access_token,
-        refresh_token: result.refresh_token,
-      });
-      if (error) throw error;
-
+      setSharedSession();
+      attachSharedSession();
       toast.success("התחברת כ־דנה — הסנכרון בין המכשירים פעיל");
       void navigate({ to: "/settings" });
     } catch (e) {
+      clearSharedSession();
       toast.error(e instanceof Error ? e.message : "ההתחברות נכשלה");
     } finally {
       setBusy(false);
@@ -128,7 +120,7 @@ function AuthPage() {
             onChange={(e) => setUsername(e.target.value)}
             placeholder="דנה"
             autoComplete="username"
-            disabled={!configured || busy}
+            disabled={busy}
             onKeyDown={(e) => e.key === "Enter" && void login()}
           />
         </div>
@@ -141,11 +133,11 @@ function AuthPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="1234"
             autoComplete="current-password"
-            disabled={!configured || busy}
+            disabled={busy}
             onKeyDown={(e) => e.key === "Enter" && void login()}
           />
         </div>
-        <Button className="w-full rounded-full" onClick={() => void login()} disabled={busy || !configured}>
+        <Button className="w-full rounded-full" onClick={() => void login()} disabled={busy}>
           <LogIn className="size-4" />
           {busy ? "מתחבר…" : "התחברות וסנכרון"}
         </Button>
