@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Droplets, Flame, Footprints, Plus, TrendingDown, UtensilsCrossed } from "lucide-react";
+import { Droplets, Flame, Footprints, Plus, RotateCcw, TrendingDown, UtensilsCrossed } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
 import { Card, MacroTile, Ring } from "@/components/Stat";
 import { DayNav } from "@/components/DayNav";
 import { MetricHistoryButton } from "@/components/MetricHistoryDialog";
@@ -9,7 +10,7 @@ import { FoodPickerDialog } from "@/components/FoodPickerDialog";
 import { StepsDialog } from "@/components/FabMenu";
 import { Button } from "@/components/ui/button";
 import { actions, dayTotals, dayWater, heDayLabel, todayKey, useStore } from "@/lib/store";
-import { MEALS, type MealKey } from "@/lib/types";
+import { MEALS, type LogEntry, type MealKey } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,6 +57,35 @@ function Dashboard() {
   const nextMeal =
     MEALS.find((m) => !state.entries.some((e) => e.date === date && e.meal === m.key)) ?? MEALS[3]!;
 
+  /** Unique recent log items for one-tap re-add */
+  const recentFromHistory = useMemo(() => {
+    const seen = new Set<string>();
+    const out: LogEntry[] = [];
+    for (let i = state.entries.length - 1; i >= 0; i--) {
+      const e = state.entries[i]!;
+      const key = `${e.name}|${e.grams}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [state.entries]);
+
+  const reAdd = (e: LogEntry) => {
+    actions.addEntry({
+      date,
+      meal: nextMeal.key,
+      name: e.name,
+      grams: e.grams,
+      calories: e.calories,
+      protein: e.protein,
+      carbs: e.carbs,
+      fat: e.fat,
+    });
+    toast.success(`נוסף ל${nextMeal.label}: ${e.name}`);
+  };
+
   return (
     <div className="space-y-4">
       <header className="text-center">
@@ -85,6 +115,29 @@ function Dashboard() {
           <Metric title="נותר" value={`${remaining}`} />
         </div>
       </Card>
+
+      {recentFromHistory.length > 0 && (
+        <Card className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-bold">הוסף שוב</h2>
+            <span className="text-xs text-muted-foreground">ל{nextMeal.label}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {recentFromHistory.map((e) => (
+              <button
+                key={`${e.name}-${e.grams}-${e.id}`}
+                type="button"
+                onClick={() => reAdd(e)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+              >
+                <RotateCcw className="size-3.5 text-primary" />
+                <span className="max-w-[9rem] truncate">{e.name}</span>
+                <span className="text-muted-foreground">{e.grams}ג׳</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <Card className="space-y-2">
         <h2 className="font-bold">פירוט לפי ארוחות</h2>
@@ -173,7 +226,6 @@ function Dashboard() {
       </Card>
 
       <DayNav date={date} onChange={setDate} />
-
 
       <Card className="flex items-center gap-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-water/15 text-water">
