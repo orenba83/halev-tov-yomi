@@ -22,7 +22,6 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-/** Simple Google "G" icon (no extra dependency) */
 function GoogleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
@@ -46,16 +45,31 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
+function errorText(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error) {
+    const o = error as { msg?: string; message?: string; error_description?: string };
+    return o.msg || o.message || o.error_description || "ההתחברות נכשלה";
+  }
+  return String(error ?? "ההתחברות נכשלה");
+}
+
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
   const configured = typeof window !== "undefined" ? !!getSupabaseEnv() : true;
 
   useEffect(() => {
     if (!getSupabaseEnv()) return;
+
+    // OAuth / magic-link return may put tokens in the URL hash
+    if (typeof window !== "undefined" && window.location.hash.includes("access_token")) {
+      toast.success("התחברת בהצלחה");
+    }
 
     let unsub: (() => void) | undefined;
     void (async () => {
@@ -66,7 +80,7 @@ function AuthPage() {
           return;
         }
         const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-          if (session && ["SIGNED_IN", "INITIAL_SESSION"].includes(event)) {
+          if (session && ["SIGNED_IN", "INITIAL_SESSION", "TOKEN_REFRESHED"].includes(event)) {
             void navigate({ to: "/settings" });
           }
         });
@@ -81,64 +95,54 @@ function AuthPage() {
 
   const withGoogle = async () => {
     if (!getSupabaseEnv()) {
-      toast.error("סנכרון בענן לא מוגדר — חסרים משתני סביבה של Supabase");
+      toast.error("סנכרון בענן לא מוגדר");
       return;
     }
     setBusy(true);
+    setHint(null);
     try {
-      // Prefer Lovable Cloud Auth — handles Google OAuth without requiring
-      // the Google client secret to be configured on the Supabase project.
+      // Lovable Cloud Auth owns the Google client secret in Lovable-hosted builds.
       const lovableResult = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: `${window.location.origin}/auth`,
       });
 
-      if (lovableResult.redirected) {
-        // Browser is navigating to Google / Lovable — stop here.
+      if (lovableResult.redirected) return;
+
+      if (!lovableResult.error) {
+        toast.success("התחברת בהצלחה");
+        void navigate({ to: "/settings" });
         return;
       }
 
-      if (lovableResult.error) {
-        // Fall back to native Supabase OAuth (needs secret configured in dashboard).
-        const msg = String(
-          lovableResult.error instanceof Error
-            ? lovableResult.error.message
-            : (lovableResult.error as { message?: string })?.message ?? lovableResult.error,
-        );
-        console.warn("[auth] Lovable Google failed, trying Supabase native", msg);
+      const lovableMsg = errorText(lovableResult.error);
+      console.warn("[auth] Lovable Google:", lovableMsg);
 
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: `${window.location.origin}/auth`,
-            queryParams: { prompt: "select_account" },
-          },
-        });
-        if (error) throw error;
-        return;
-      }
-
-      // Tokens already applied via setSession inside lovable helper
-      toast.success("התחברת בהצלחה");
-      void navigate({ to: "/settings" });
+      // Native Supabase only works when Google Client Secret is set in the dashboard.
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth`,
+          queryParams: { prompt: "select_account" },
+        },
+      });
+      if (error) throw error;
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === "object" && error && "msg" in error
-            ? String((error as { msg: string }).msg)
-            : "ההתחברות עם Google נכשלה";
-      toast.error(
-        /missing OAuth secret|Unsupported provider/i.test(message)
-          ? "התחברות Google עדיין לא מוגדרת במלואה בשרת. נסה אימייל, או השתמש בגרסת Lovable."
-          : message,
-      );
+      const message = errorText(error);
+      if (/missing OAuth secret|Unsupported provider/i.test(message)) {
+        setHint(
+          "Google עדיין לא מוגדר במלואו בשרת (חסר Client Secret ב-Supabase). אפשר להתחבר עם אימייל, או להשתמש בגרסה המפורסמת ב-Lovable שם Google כבר עובד.",
+        );
+        toast.error("התחברות Google לא זמינה בסביבה הזו");
+      } else {
+        toast.error(message);
+      }
       setBusy(false);
     }
   };
 
   const withEmail = async () => {
     if (!getSupabaseEnv()) {
-      toast.error("סנכרון בענן לא מוגדר — חסרים משתני סביבה של Supabase");
+      toast.error("סנכרון בענן לא מוגדר");
       return;
     }
     if (!email.trim() || password.length < 6) {
@@ -146,6 +150,7 @@ function AuthPage() {
       return;
     }
     setBusy(true);
+    setHint(null);
     try {
       const result =
         mode === "signin"
@@ -163,7 +168,7 @@ function AuthPage() {
       toast.success("התחברת בהצלחה");
       void navigate({ to: "/settings" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "ההתחברות נכשלה");
+      toast.error(errorText(error));
     } finally {
       setBusy(false);
     }
@@ -188,11 +193,17 @@ function AuthPage() {
             <div>
               <p className="font-medium text-destructive">סנכרון בענן לא מוגדר בסביבה הזו</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                חסרים משתני הסביבה <span dir="ltr">VITE_SUPABASE_URL</span> ו־
-                <span dir="ltr">VITE_SUPABASE_PUBLISHABLE_KEY</span>.
+                חסרים משתני הסביבה של Supabase.
               </p>
             </div>
           </div>
+        </Card>
+      )}
+
+      {hint && (
+        <Card className="space-y-1 border-amber-500/40 bg-amber-500/5 text-sm">
+          <p className="font-medium">טיפ להתחברות</p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
         </Card>
       )}
 
