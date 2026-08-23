@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { actions, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { AppState } from "@/lib/types";
+import { displayNameForEmail } from "@/lib/sharedAccount";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -241,6 +242,7 @@ function CloudCard() {
   const sync = useSyncInfo();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const accountLabel = displayNameForEmail(sync.email);
 
   const statusLabel = (() => {
     switch (sync.status) {
@@ -279,7 +281,7 @@ function CloudCard() {
       {sync.userId ? (
         <>
           <p className="text-xs text-muted-foreground">
-            מחובר/ת כ־<span dir="ltr">{sync.email ?? "חשבון"}</span>
+            מחובר/ת כ־<span className="font-semibold text-foreground">{accountLabel}</span>
           </p>
           <div className="flex items-start gap-2 text-sm">
             {sync.status === "synced" ? (
@@ -345,8 +347,8 @@ function CloudCard() {
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            בלי חשבון הנתונים נשמרים רק במכשיר הזה. אחרי התחברות עם Google או אימייל — כל הזנה
-            מסתנכרנת אוטומטית בין הטלפון למחשב.
+            התחברות עם <b>דנה</b> וסיסמה <b dir="ltr">1234</b> — ואז כל הזנה מסתנכרנת בין הטלפון
+            למחשב.
           </p>
           {sync.error && (
             <p className="flex items-start gap-2 text-xs text-destructive">
