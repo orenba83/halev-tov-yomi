@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowRight, Camera, Pencil, Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, Camera, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/Stat";
 import { EditEntryDialog, FoodPickerDialog } from "@/components/FoodPickerDialog";
@@ -39,6 +39,35 @@ function MealScreen() {
 
   const items = state.entries.filter((e) => e.date === date && e.meal === mealKey);
 
+  /** Unique recent items by name+grams (last 12), for one-tap re-add */
+  const recentFromHistory = useMemo(() => {
+    const seen = new Set<string>();
+    const out: LogEntry[] = [];
+    for (let i = state.entries.length - 1; i >= 0; i--) {
+      const e = state.entries[i]!;
+      const key = `${e.name}|${e.grams}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+      if (out.length >= 8) break;
+    }
+    return out;
+  }, [state.entries]);
+
+  const reAdd = (e: LogEntry) => {
+    actions.addEntry({
+      date,
+      meal: mealKey,
+      name: e.name,
+      grams: e.grams,
+      calories: e.calories,
+      protein: e.protein,
+      carbs: e.carbs,
+      fat: e.fat,
+    });
+    toast.success(`נוסף: ${e.name}`);
+  };
+
   return (
     <div className="space-y-4">
       <header className="flex items-center gap-2">
@@ -62,6 +91,14 @@ function MealScreen() {
                 {e.name} <span className="text-muted-foreground">· {e.grams} ג׳</span>
               </p>
             </div>
+            <button
+              onClick={() => reAdd(e)}
+              aria-label="הוסף שוב"
+              title="הוסף שוב"
+              className="text-muted-foreground hover:text-primary"
+            >
+              <RotateCcw className="size-4" />
+            </button>
             <button onClick={() => setEditing(e)} aria-label="עריכה" className="text-muted-foreground hover:text-foreground">
               <Pencil className="size-4" />
             </button>
@@ -88,6 +125,27 @@ function MealScreen() {
           </Button>
         </div>
       </Card>
+
+      {recentFromHistory.length > 0 && (
+        <Card className="space-y-2">
+          <h2 className="font-bold">הוסף שוב מההיסטוריה</h2>
+          <p className="text-xs text-muted-foreground">לחיצה אחת מוסיפה את אותו פריט לארוחה הזו</p>
+          <div className="flex flex-wrap gap-2">
+            {recentFromHistory.map((e) => (
+              <button
+                key={`${e.name}-${e.grams}-${e.id}`}
+                type="button"
+                onClick={() => reAdd(e)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+              >
+                <RotateCcw className="size-3.5 text-primary" />
+                <span className="max-w-[10rem] truncate">{e.name}</span>
+                <span className="text-muted-foreground">{e.grams}ג׳</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <FoodPickerDialog open={picker} onOpenChange={setPicker} meal={mealKey} date={date} showMealSelect={false} />
       <AiFoodScanDialog open={scan} onOpenChange={setScan} meal={mealKey} date={date} />
