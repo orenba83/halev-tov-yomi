@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, Loader2, Send, Sparkles } from "lucide-react";
+import { Camera, ImagePlus, Loader2, Send, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,12 +16,10 @@ import { analyzeFoodImage } from "@/lib/ai.functions";
 import { cn } from "@/lib/utils";
 import { MEALS, type MealKey } from "@/lib/types";
 
-/** מונע מהמקלדת להסתיר את שורת ההקלדה במובייל */
 const scrollIntoViewOnFocus = (e: { currentTarget: HTMLElement }) => {
   const el = e.currentTarget;
   setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
 };
-
 
 export interface ScanValues {
   name: string;
@@ -55,9 +53,10 @@ export function AiFoodScanDialog({
   const [thread, setThread] = useState<{ role: "user" | "ai"; text: string }[]>([]);
   const [hint, setHint] = useState("");
   const [values, setValues] = useState<ScanValues>(EMPTY);
+  const [saveFavorite, setSaveFavorite] = useState(true);
+  const baseRef = useRef<{ g: number; cal: number; p: number; c: number; f: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
-
 
   const reset = () => {
     setImage(null);
@@ -66,8 +65,10 @@ export function AiFoodScanDialog({
     setHint("");
     setValues(EMPTY);
     setBusy(false);
+    setSaveFavorite(true);
+    baseRef.current = null;
   };
-  /** פתיחת מצלמה או גלריה מיידית כשנכנסים למצב צילום/העלאה */
+
   useEffect(() => {
     if (!open) return;
     if (mode === "photo" || mode === "barcode") {
@@ -81,6 +82,49 @@ export function AiFoodScanDialog({
     return;
   }, [open, mode]);
 
+  const applyResult = (r: {
+    name: string;
+    grams: number;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    note?: string;
+  }) => {
+    baseRef.current = {
+      g: r.grams,
+      cal: r.calories,
+      p: r.protein,
+      c: r.carbs,
+      f: r.fat,
+    };
+    setValues({
+      name: r.name,
+      grams: String(r.grams),
+      calories: String(r.calories),
+      protein: String(r.protein),
+      carbs: String(r.carbs),
+      fat: String(r.fat),
+    });
+  };
+
+  /** When user edits grams, scale macros from the last AI baseline */
+  const onGramsChange = (raw: string) => {
+    setValues((prev) => {
+      const next = { ...prev, grams: raw };
+      const g = Number(raw);
+      const base = baseRef.current;
+      if (!base || !Number.isFinite(g) || g <= 0 || base.g <= 0) return next;
+      const ratio = g / base.g;
+      return {
+        ...next,
+        calories: String(Math.round(base.cal * ratio)),
+        protein: String(+(base.p * ratio).toFixed(1)),
+        carbs: String(+(base.c * ratio).toFixed(1)),
+        fat: String(+(base.f * ratio).toFixed(1)),
+      };
+    });
+  };
 
   const analyze = async (dataUrl: string | null, userHint?: string) => {
     setBusy(true);
@@ -92,19 +136,12 @@ export function AiFoodScanDialog({
         return;
       }
       const r = res.result;
-      setValues({
-        name: r.name,
-        grams: String(r.grams),
-        calories: String(r.calories),
-        protein: String(r.protein),
-        carbs: String(r.carbs),
-        fat: String(r.fat),
-      });
+      applyResult(r);
       setThread((t) => [
         ...t,
         {
           role: "ai",
-          text: `${r.note || `נראה לי שזו ${r.name}`}\nהערכה: ${r.grams} ג׳ · ${r.calories} קל׳ · חלבון ${r.protein} · פחמימות ${r.carbs} · שומן ${r.fat}\nאם משהו לא מדויק — כתוב לי ואעדכן, או ערוך ידנית ולחץ "הוסף לארוחה".`,
+          text: `${r.note || `נראה לי שזו ${r.name}`}\nהערכה: ${r.grams} ג׳ · ${r.calories} קל׳ · חלבון ${r.protein} · פחמימות ${r.carbs} · שומן ${r.fat}\nשנו את הכמות בגרמים — הקלוריות והמאקרו יתעדכנו אוטומטית. אפשר גם לערוך ידנית וללחוץ "הוסף לארוחה".`,
         },
       ]);
     } catch (e) {
@@ -137,7 +174,6 @@ export function AiFoodScanDialog({
     void analyze(image, h);
   };
 
-
   const add = () => {
     const g = Number(values.grams);
     const cal = Number(values.calories);
@@ -168,7 +204,6 @@ export function AiFoodScanDialog({
       carbs: c,
       fat: f,
     });
-    // שמירת המוצר במאגר הפרטי כדי שיופיע בחיפוש ובהיסטוריה בפעם הבאה
     const saved = actions.addCustomFood({
       name,
       calories: Math.round(cal * per),
@@ -178,7 +213,8 @@ export function AiFoodScanDialog({
       serving: g,
     });
     actions.pushRecent(saved.id);
-    toast.success("נוסף לארוחה ולמאגר שלי");
+    if (saveFavorite) actions.toggleFavorite(saved.id);
+    toast.success(saveFavorite ? "נוסף לארוחה, למאגר ולמועדפים" : "נוסף לארוחה ולמאגר שלי");
 
     reset();
     onOpenChange(false);
@@ -198,7 +234,6 @@ export function AiFoodScanDialog({
           "top-2 max-h-[85dvh] translate-y-0 sm:top-1/2 sm:max-h-[90vh] sm:-translate-y-1/2",
         )}
       >
-
         <DialogHeader className="text-right">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
@@ -209,7 +244,7 @@ export function AiFoodScanDialog({
               ? "פרטו ככל האפשר את המנה כדי לקבל תוצאה מדויקת"
               : mode === "gallery"
                 ? "בחרו תמונה מהגלריה — ה-AI יזהה את המנה ויאשר את הערכים"
-                : "ה-AI יזהה מה בתמונה, תאשרו יחד את הערכים ואז נוסיף לארוחה"}
+                : "ה-AI יזהה מה בתמונה, ערכו כמויות לפי הצורך ואז הוסיפו לארוחה"}
           </DialogDescription>
         </DialogHeader>
 
@@ -259,11 +294,9 @@ export function AiFoodScanDialog({
               </div>
             )}
           </div>
-
         ) : (
           <div className="space-y-3">
             {image && <img src={image} alt="התמונה שצולמה" className="h-40 w-full rounded-2xl object-cover" />}
-
 
             <div className="max-h-52 space-y-2 overflow-y-auto rounded-2xl bg-muted/40 p-3">
               {thread.map((m, i) => (
@@ -315,13 +348,27 @@ export function AiFoodScanDialog({
               </Button>
             </div>
 
-
             <div className="grid grid-cols-2 gap-2">
               <Field label="שם המנה" value={values.name} onChange={(v) => setValues({ ...values, name: v })} />
-              <Field label="כמות (ג׳)" value={values.grams} onChange={(v) => setValues({ ...values, grams: v })} num />
-              <Field label="קלוריות" value={values.calories} onChange={(v) => setValues({ ...values, calories: v })} num />
-              <Field label="חלבון (ג׳)" value={values.protein} onChange={(v) => setValues({ ...values, protein: v })} num />
-              <Field label="פחמימות (ג׳)" value={values.carbs} onChange={(v) => setValues({ ...values, carbs: v })} num />
+              <Field label="כמות (ג׳)" value={values.grams} onChange={onGramsChange} num />
+              <Field
+                label="קלוריות"
+                value={values.calories}
+                onChange={(v) => setValues({ ...values, calories: v })}
+                num
+              />
+              <Field
+                label="חלבון (ג׳)"
+                value={values.protein}
+                onChange={(v) => setValues({ ...values, protein: v })}
+                num
+              />
+              <Field
+                label="פחמימות (ג׳)"
+                value={values.carbs}
+                onChange={(v) => setValues({ ...values, carbs: v })}
+                num
+              />
               <Field label="שומן (ג׳)" value={values.fat} onChange={(v) => setValues({ ...values, fat: v })} num />
             </div>
 
@@ -339,6 +386,18 @@ export function AiFoodScanDialog({
                 </button>
               ))}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setSaveFavorite((v) => !v)}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-2xl border border-border px-3 py-2 text-sm font-medium transition-colors",
+                saveFavorite ? "border-primary/40 bg-primary/5 text-primary" : "text-muted-foreground",
+              )}
+            >
+              <Star className={cn("size-4", saveFavorite && "fill-current")} />
+              {saveFavorite ? "יישמר גם כמועדף" : "ללא שמירה כמועדף"}
+            </button>
 
             <Button className="w-full" onClick={add} disabled={busy}>
               הוסף לארוחה
