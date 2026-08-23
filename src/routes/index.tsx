@@ -7,9 +7,10 @@ import { Card, MacroTile, Ring } from "@/components/Stat";
 import { DayNav } from "@/components/DayNav";
 import { MetricHistoryButton } from "@/components/MetricHistoryDialog";
 import { FoodPickerDialog } from "@/components/FoodPickerDialog";
-import { StepsDialog } from "@/components/FabMenu";
+import { HuaweiStepsHint, HuaweiStepsSync } from "@/components/HuaweiStepsSync";
 import { Button } from "@/components/ui/button";
 import { actions, dayTotals, dayWater, heDayLabel, todayKey, useStore } from "@/lib/store";
+import { lastSyncIsToday } from "@/lib/huaweiSteps";
 import { MEALS, type LogEntry, type MealKey } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
@@ -39,6 +40,7 @@ function Dashboard() {
   const remaining = Math.max(0, settings.calorieGoal - totals.calories);
   const steps = state.steps[date] ?? 0;
   const water = dayWater(state, date);
+  const showHuaweiHint = date === todayKey() && !lastSyncIsToday(settings.huaweiLastSync);
 
   const weightData = useMemo(
     () => state.weights.slice(-7).map((w) => ({ name: heDayLabel(w.date), value: w.value })),
@@ -57,7 +59,6 @@ function Dashboard() {
   const nextMeal =
     MEALS.find((m) => !state.entries.some((e) => e.date === date && e.meal === m.key)) ?? MEALS[3]!;
 
-  /** Unique recent log items for one-tap re-add */
   const recentFromHistory = useMemo(() => {
     const seen = new Set<string>();
     const out: LogEntry[] = [];
@@ -92,6 +93,8 @@ function Dashboard() {
         <p className="text-sm text-muted-foreground">{greeting},</p>
         <h1 className="text-2xl font-extrabold tracking-tight">{settings.name}</h1>
       </header>
+
+      {showHuaweiHint && <HuaweiStepsHint onSync={() => setStepsOpen(true)} />}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <MacroTile label="קלוריות" value={totals.calories} goal={settings.calorieGoal} color="primary" unit="קל׳" />
@@ -179,7 +182,7 @@ function Dashboard() {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground">צעדים</p>
+            <p className="text-xs text-muted-foreground">צעדים מהצמיד</p>
             <MetricHistoryButton kind="steps" />
           </div>
           <p className="text-xl font-bold tabular-nums">
@@ -196,11 +199,11 @@ function Dashboard() {
           </div>
         </div>
         <div className="flex shrink-0 flex-col gap-1.5">
+          <Button size="sm" className="rounded-full" onClick={() => setStepsOpen(true)}>
+            מהצמיד
+          </Button>
           <Button variant="outline" size="sm" className="rounded-full" onClick={() => actions.setSteps(date, steps + 1000)}>
             <span dir="ltr">+1000</span>
-          </Button>
-          <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setStepsOpen(true)}>
-            עדכון
           </Button>
         </div>
       </Card>
@@ -282,7 +285,7 @@ function Dashboard() {
         onMealChange={setMeal}
         date={date}
       />
-      <StepsDialog open={stepsOpen} onOpenChange={setStepsOpen} date={date} />
+      <HuaweiStepsSync open={stepsOpen} onOpenChange={setStepsOpen} date={date} />
     </div>
   );
 }
