@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CloudUpload, Mail } from "lucide-react";
+import { CloudUpload, Mail, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/Stat";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseEnv, supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -51,20 +51,38 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const configured = typeof window !== "undefined" ? !!getSupabaseEnv() : true;
 
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => {
-      if (data.session) void navigate({ to: "/settings" });
-    });
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && ["SIGNED_IN", "INITIAL_SESSION"].includes(event)) {
-        void navigate({ to: "/settings" });
+    if (!getSupabaseEnv()) return;
+
+    let unsub: (() => void) | undefined;
+    void (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          void navigate({ to: "/settings" });
+          return;
+        }
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+          if (session && ["SIGNED_IN", "INITIAL_SESSION"].includes(event)) {
+            void navigate({ to: "/settings" });
+          }
+        });
+        unsub = () => listener.subscription.unsubscribe();
+      } catch (e) {
+        console.error("[auth] session check failed", e);
       }
-    });
-    return () => listener.subscription.unsubscribe();
+    })();
+
+    return () => unsub?.();
   }, [navigate]);
 
   const withGoogle = async () => {
+    if (!getSupabaseEnv()) {
+      toast.error("סנכרון בענן לא מוגדר — חסרים משתני סביבה של Supabase");
+      return;
+    }
     setBusy(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -84,6 +102,10 @@ function AuthPage() {
   };
 
   const withEmail = async () => {
+    if (!getSupabaseEnv()) {
+      toast.error("סנכרון בענן לא מוגדר — חסרים משתני סביבה של Supabase");
+      return;
+    }
     if (!email.trim() || password.length < 6) {
       toast.error("יש להזין אימייל וסיסמה באורך 6 תווים לפחות");
       return;
@@ -124,13 +146,29 @@ function AuthPage() {
         </p>
       </header>
 
+      {!configured && (
+        <Card className="space-y-2 border-destructive/40 bg-destructive/5">
+          <div className="flex items-start gap-2 text-sm">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
+            <div>
+              <p className="font-medium text-destructive">סנכרון בענן לא מוגדר בסביבה הזו</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                חסרים משתני הסביבה <span dir="ltr">VITE_SUPABASE_URL</span> ו־
+                <span dir="ltr">VITE_SUPABASE_PUBLISHABLE_KEY</span>. הגדר אותם ב־Vercel / ב־.env
+                המקומי, או חבר Supabase ב-Lovable Cloud.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <Card className="space-y-4">
         <Button
           type="button"
           variant="outline"
           className="w-full rounded-full gap-2 border-border bg-background hover:bg-accent"
           onClick={withGoogle}
-          disabled={busy}
+          disabled={busy || !configured}
         >
           <GoogleIcon className="size-5" />
           התחברות עם Google
@@ -151,6 +189,7 @@ function AuthPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@example.com"
             autoComplete="email"
+            disabled={!configured}
           />
         </div>
         <div className="space-y-1.5">
@@ -161,16 +200,18 @@ function AuthPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            disabled={!configured}
           />
         </div>
-        <Button className="w-full rounded-full" onClick={withEmail} disabled={busy}>
+        <Button className="w-full rounded-full" onClick={withEmail} disabled={busy || !configured}>
           <Mail className="size-4" />
           {mode === "signin" ? "התחברות" : "הרשמה"}
         </Button>
         <button
           type="button"
-          className="w-full text-center text-xs text-muted-foreground underline"
+          className="w-full text-center text-xs text-muted-foreground underline disabled:opacity-50"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+          disabled={!configured}
         >
           {mode === "signin" ? "אין לי חשבון — הרשמה" : "יש לי כבר חשבון — התחברות"}
         </button>
