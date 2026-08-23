@@ -157,7 +157,7 @@ function SettingsPage() {
               : "text-muted-foreground",
           )}
         >
-          סך המאקרו: {Math.round(macroCals)} קק״ל מתוך יעד {form.calorieGoal || 0} קק״ל
+          סך המאקרו: {Math.round(macroCals)} קק״ל מתוך יעד {form.calorieGoal || 0} קק"ל
         </p>
         <Button onClick={save}>שמירת יעדים</Button>
       </Card>
@@ -370,7 +370,7 @@ function HuaweiCard() {
   const [email, setEmail] = useState(settings.huaweiEmail ?? "");
 
   const connect = () => {
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+    if (!/^\\S+@\\S+\\.\\S+$/.test(email.trim())) {
       toast.error("יש להזין כתובת חשבון Huawei תקינה");
       return;
     }
@@ -396,16 +396,16 @@ function HuaweiCard() {
             date: String(r.date ?? r.day ?? r.time ?? "").slice(0, 10),
             steps: Number(r.steps ?? r.value ?? r.stepCount ?? 0),
           }))
-          .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.steps > 0);
+          .filter((r) => /^\\d{4}-\\d{2}-\\d{2}$/.test(r.date) && r.steps > 0);
       } catch {
         rows = text
-          .split(/\r?\n/)
+          .split(/\\r?\\n/)
           .slice(1)
           .map((line) => {
-            const [d, v] = line.split(/[,;\t]/);
+            const [d, v] = line.split(/[,;\\t]/);
             return { date: String(d ?? "").trim().slice(0, 10), steps: Number(v) };
           })
-          .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date) && Number.isFinite(r.steps) && r.steps > 0);
+          .filter((r) => /^\\d{4}-\\d{2}-\\d{2}$/.test(r.date) && Number.isFinite(r.steps) && r.steps > 0);
       }
       if (!rows.length) {
         toast.error("לא נמצאו נתוני צעדים בקובץ");
@@ -467,7 +467,7 @@ function HuaweiCard() {
         </>
       )}
       <p className="text-xs text-muted-foreground">
-        הצעדים נמשכים מייצוא נתוני Huawei Health (Health > אני > הגדרות פרטיות > ייצוא נתונים) ומתעדכנים
+        הצעדים נמשכים מייצוא נתוני Huawei Health (Health, אני, הגדרות פרטיות, ייצוא נתונים) ומתעדכנים
         אוטומטית בכל המסכים.
       </p>
     </Card>
