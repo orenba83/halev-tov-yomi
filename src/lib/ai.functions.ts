@@ -14,6 +14,12 @@ const VISION_SYSTEM = `את/ה מזהה מזון מתמונות עבור אפל�
 החזר JSON בלבד, ללא טקסט נוסף, במבנה:
 {"barcode":"מספר הברקוד או מחרוזת ריקה אם אין","name":"שם המנה בעברית","grams":<גרם משוער למנה שבתמונה>,"calories":<קלוריות למנה>,"protein":<גרם>,"carbs":<גרם>,"fat":<גרם>,"confidence":<0-1>,"note":"משפט קצר בעברית מה זיהית ומה ההנחות"}`;
 
+const STEPS_SYSTEM = `את/ה קורא/ת מספר צעדים מצילום מסך של אפליקציית Huawei Health או מהצמיד עצמו.
+מצא את מספר הצעדים היומי הבולט ביותר (steps / צעדים).
+התעלם מקלוריות, מרחק, דופק ומספרי תאריך.
+החזר JSON בלבד:
+{"steps":<מספר שלם>,"date":"YYYY-MM-DD או מחרוזת ריקה אם לא ברור","note":"משפט קצר"}`;
+
 function getGeminiKey() {
   return getCookie("gemini_api_key")?.trim() || process.env["GEMINI_API_KEY"]?.trim() || "";
 }
@@ -125,4 +131,40 @@ export const analyzeFoodImage = createServerFn({ method: "POST" })
       }
       return { ok: true as const, result: { name: String(parsed["name"] ?? "מנה לא מזוהה"), grams: Math.max(1, Math.round(num(parsed["grams"], 100))), calories: Math.max(0, Math.round(num(parsed["calories"]))), protein: +num(parsed["protein"]).toFixed(1), carbs: +num(parsed["carbs"]).toFixed(1), fat: +num(parsed["fat"]).toFixed(1), note: String(parsed["note"] ?? ""), confidence: num(parsed["confidence"], 0.6) } };
     } catch { return { ok: false as const, note: raw || "תשובת AI לא תקינה" }; }
+  });
+
+const StepsImageInput = z.object({ image: z.string().min(20) });
+
+export const parseStepsImage = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => StepsImageInput.parse(d))
+  .handler(async ({ data }) => {
+    const prompt = "קרא את מספר הצעדים היומי מצילום המסך. החזר JSON בלבד.";
+    const key = getGeminiKey();
+    let raw: string | null = null;
+    if (key) {
+      const parts: unknown[] = [{ text: prompt }];
+      const inline = dataUrlToInlineData(data.image);
+      if (inline) parts.push({ inline_data: inline });
+      raw = await callGemini([{ role: "user", parts }], STEPS_SYSTEM);
+    } else {
+      raw = await callGateway({
+        messages: [
+          { role: "system", content: STEPS_SYSTEM },
+          { role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: data.image } }] },
+        ],
+      });
+    }
+    const match = raw?.match(/\{[\s\S]*\}/);
+    if (!match) return { ok: false as const, note: raw || "לא נמצא מספר צעדים בתמונה" };
+    try {
+      const parsed = JSON.parse(match[0]) as { steps?: unknown; date?: unknown; note?: unknown };
+      const steps = Math.round(Number(parsed.steps));
+      if (!Number.isFinite(steps) || steps <= 0 || steps > 200000) {
+        return { ok: false as const, note: "לא הצלחתי לקרוא מספר צעדים הגיוני מהתמונה" };
+      }
+      const date = String(parsed.date ?? "").slice(0, 10);
+      return { ok: true as const, steps, date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "", note: String(parsed.note ?? "") };
+    } catch {
+      return { ok: false as const, note: raw || "תשובת AI לא תקינה" };
+    }
   });
