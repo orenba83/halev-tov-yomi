@@ -12,6 +12,7 @@ import {
   Sun,
   Upload,
   Watch,
+  AlertTriangle,
 } from "lucide-react";
 import { pullNow, signOut, syncNow, useSyncInfo } from "@/lib/sync";
 import { toast } from "sonner";
@@ -184,7 +185,6 @@ function SettingsPage() {
       <HuaweiCard />
 
       <Card className="space-y-3">
-
         <h2 className="font-bold">נתונים וגיבוי</h2>
         <p className="text-xs text-muted-foreground">
           כשמחוברים לחשבון הנתונים נשמרים בענן ומסתנכרנים בין כל המכשירים. אפשר גם לייצא גיבוי מקומי.
@@ -242,13 +242,32 @@ function CloudCard() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
 
-  const statusText: Record<string, string> = {
-    "signed-out": "לא מחובר — הנתונים נשמרים רק במכשיר הזה",
-    loading: "טוען נתונים מהענן…",
-    saving: "שומר בענן…",
-    synced: "מסונכרן",
-    error: "שגיאת סנכרון — ננסה שוב בשינוי הבא",
-  };
+  const statusLabel = (() => {
+    switch (sync.status) {
+      case "signed-out":
+        return "לא מחובר — הנתונים נשמרים רק במכשיר הזה";
+      case "loading":
+        return "טוען נתונים מהענן…";
+      case "saving":
+        return "שומר שינויים בענן…";
+      case "synced":
+        return "מסונכרן עם הענן";
+      case "error":
+        return sync.error || "שגיאת סנכרון";
+      default:
+        return "";
+    }
+  })();
+
+  const lastSynced =
+    sync.lastSyncedAt != null
+      ? new Date(sync.lastSyncedAt).toLocaleString("he-IL", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : null;
 
   return (
     <Card className="space-y-3">
@@ -260,17 +279,27 @@ function CloudCard() {
       {sync.userId ? (
         <>
           <p className="text-xs text-muted-foreground">
-            מחוברת כ־<span dir="ltr">{sync.email}</span>
+            מחובר/ת כ־<span dir="ltr">{sync.email ?? "חשבון"}</span>
           </p>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-start gap-2 text-sm">
             {sync.status === "synced" ? (
-              <CheckCircle2 className="size-4 text-primary" />
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+            ) : sync.status === "error" ? (
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
             ) : (
-              <RefreshCw className={cn("size-4", sync.status !== "error" && "animate-spin")} />
+              <RefreshCw className="mt-0.5 size-4 shrink-0 animate-spin" />
             )}
-            <span className={cn(sync.status === "error" && "text-destructive")}>
-              {statusText[sync.status]}
-            </span>
+            <div className="min-w-0">
+              <p className={cn(sync.status === "error" && "text-destructive")}>{statusLabel}</p>
+              {lastSynced && sync.status === "synced" && (
+                <p className="mt-0.5 text-xs text-muted-foreground">סנכרון אחרון: {lastSynced}</p>
+              )}
+              {sync.status === "error" && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  נסו "סנכרן עכשיו". אם זה חוזר — בדקו חיבור לאינטרנט, או התנתקו והתחברו מחדש.
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -279,9 +308,10 @@ function CloudCard() {
               disabled={busy}
               onClick={async () => {
                 setBusy(true);
-                await syncNow();
+                const ok = await syncNow();
                 setBusy(false);
-                toast.success("הנתונים נשמרו בענן");
+                if (ok) toast.success("הנתונים נשמרו בענן");
+                else toast.error("השמירה בענן נכשלה");
               }}
             >
               <RefreshCw className="size-4" /> סנכרן עכשיו
@@ -292,9 +322,10 @@ function CloudCard() {
               disabled={busy}
               onClick={async () => {
                 setBusy(true);
-                await pullNow();
+                const ok = await pullNow();
                 setBusy(false);
-                toast.success("הנתונים נטענו מהענן");
+                if (ok) toast.success("הנתונים נטענו מהענן");
+                else toast.error("המשיכה מהענן נכשלה");
               }}
             >
               <Download className="size-4" /> משיכה מהענן
@@ -304,7 +335,7 @@ function CloudCard() {
               className="rounded-full text-xs text-destructive"
               onClick={async () => {
                 await signOut();
-                toast.success("התנתקת");
+                toast.success("התנתקת — הנתונים נשארים במכשיר הזה");
               }}
             >
               <LogOut className="size-4" /> התנתקות
@@ -314,8 +345,15 @@ function CloudCard() {
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            התחברי עם חשבון גוגל או אימייל — כל הזנה תישמר בענן ותופיע גם בטלפון וגם במחשב.
+            בלי חשבון הנתונים נשמרים רק במכשיר הזה. אחרי התחברות עם Google או אימייל — כל הזנה
+            מסתנכרנת אוטומטית בין הטלפון למחשב.
           </p>
+          {sync.error && (
+            <p className="flex items-start gap-2 text-xs text-destructive">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+              {sync.error}
+            </p>
+          )}
           <Button className="rounded-full" onClick={() => navigate({ to: "/auth" })}>
             <Link2 className="size-4" /> התחברות וסנכרון
           </Button>
@@ -427,7 +465,7 @@ function HuaweiCard() {
         </>
       )}
       <p className="text-xs text-muted-foreground">
-        הצעדים נמשכים מייצוא נתוני Huawei Health (Health &gt; אני &gt; הגדרות פרטיות &gt; ייצוא נתונים) ומתעדכנים
+        הצעדים נמשכים מייצוא נתוני Huawei Health (Health > אני > הגדרות פרטיות > ייצוא נתונים) ומתעדכנים
         אוטומטית בכל המסכים.
       </p>
     </Card>
