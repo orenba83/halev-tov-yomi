@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { getSupabaseEnv, supabase } from "@/integrations/supabase/client";
 import { actions, getState, subscribeStore } from "./store";
 import type { AppState } from "./types";
 
@@ -22,10 +22,15 @@ const friendlyError = (error: unknown) => {
   const message = error instanceof Error ? error.message : String(error ?? "שגיאה לא ידועה");
   if (/row-level security|permission denied|42501/i.test(message)) return "אין הרשאה לסנכרון בענן עבור החשבון הזה.";
   if (/relation .*user_state.*does not exist|column .*user_state.*does not exist/i.test(message)) return "מבנה טבלת הסנכרון בענן אינו מעודכן.";
+  if (/placeholder\.supabase|Failed to fetch|NetworkError|fetch/i.test(message)) return "סנכרון בענן לא מוגדר (חסרים משתני סביבה של Supabase).";
   return message;
 };
 
 async function pull(userId: string) {
+  if (!getSupabaseEnv()) {
+    setInfo({ status: "error", error: "סנכרון בענן לא מוגדר (חסרים משתני סביבה של Supabase)." });
+    return false;
+  }
   setInfo({ status: "loading", error: null });
   const { data, error } = await supabase.from("user_state").select("state, updated_at").eq("user_id", userId).maybeSingle();
   if (error) {
@@ -49,6 +54,10 @@ async function pull(userId: string) {
 }
 
 async function push(userId: string) {
+  if (!getSupabaseEnv()) {
+    setInfo({ status: "error", error: "סנכרון בענן לא מוגדר (חסרים משתני סביבה של Supabase)." });
+    return false;
+  }
   setInfo({ status: "saving", error: null });
   const { error } = await supabase.from("user_state").upsert(
     { user_id: userId, state: getState() as never, updated_at: new Date().toISOString() },
@@ -86,8 +95,32 @@ function attach(session: Session | null) {
 export function startSync() {
   if (started || typeof window === "undefined") return;
   started = true;
-  void supabase.auth.getSession().then(({ data }) => attach(data.session));
-  supabase.auth.onAuthStateChange((_event, session) => attach(session));
+
+  // Do not crash the whole app when Supabase is not configured in this environment.
+  if (!getSupabaseEnv()) {
+    setInfo({
+      email: null,
+      userId: null,
+      status: "signed-out",
+      lastSyncedAt: null,
+      error: "סנכרון בענן לא מוגדר (חסרים משתני סביבה של Supabase).",
+    });
+    return;
+  }
+
+  void supabase.auth.getSession()
+    .then(({ data }) => attach(data.session))
+    .catch((e) => {
+      console.error("[sync] getSession failed", e);
+      setInfo({ status: "error", error: friendlyError(e) });
+    });
+
+  try {
+    supabase.auth.onAuthStateChange((_event, session) => attach(session));
+  } catch (e) {
+    console.error("[sync] onAuthStateChange failed", e);
+  }
+
   const refresh = () => { if (!info.userId) return; if (dirty) void syncNow(); else void pullNow(); };
   window.addEventListener("focus", refresh);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
@@ -95,4 +128,7 @@ export function startSync() {
 
 export async function syncNow(): Promise<boolean> { if (!info.userId) return false; return push(info.userId); }
 export async function pullNow(): Promise<boolean> { if (!info.userId) return false; return pull(info.userId); }
-export async function signOut() { await supabase.auth.signOut(); }
+export async function signOut() {
+  if (!getSupabaseEnv()) return;
+  await supabase.auth.signOut();
+}
