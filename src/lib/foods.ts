@@ -1,6 +1,6 @@
 import type { Food } from "./types";
 
-/** מאגר מזון גלובלי – ערכים ל-100 גרם */
+/** מאגר מזון גלובלי – ערכים ל-100 גרם (אלא אם צוין serving) */
 export const GLOBAL_FOODS: Food[] = [
   { id: "g1", name: "חזה עוף בגריל", calories: 165, protein: 31, carbs: 0, fat: 3.6 },
   { id: "g2", name: "אורז לבן מבושל", calories: 130, protein: 2.7, carbs: 28, fat: 0.3 },
@@ -26,6 +26,20 @@ export const GLOBAL_FOODS: Food[] = [
   { id: "g22", name: "טופו", calories: 76, protein: 8, carbs: 1.9, fat: 4.8 },
   { id: "g23", name: "חלב 3%", calories: 61, protein: 3.3, carbs: 4.7, fat: 3.3 },
   { id: "g24", name: "שוקולד מריר 70%", calories: 598, protein: 7.8, carbs: 46, fat: 43 },
+
+  // פסטה — סוגים ומנות מוכנות (ערכים ל-100 ג׳ מנה מוכנה/מבושלת)
+  { id: "p1", name: "ספגטי מבושל", calories: 158, protein: 6, carbs: 31, fat: 0.9 },
+  { id: "p2", name: "פנה מבושלת", calories: 158, protein: 5.8, carbs: 31, fat: 0.9 },
+  { id: "p3", name: "מקרוני מבושל", calories: 157, protein: 5.8, carbs: 30.6, fat: 0.9 },
+  { id: "p4", name: "פסטה מלאה מבושלת", calories: 124, protein: 5.3, carbs: 26, fat: 1.1 },
+  { id: "p5", name: "פסטה בולונז", calories: 135, protein: 7, carbs: 15, fat: 5 },
+  { id: "p6", name: "פסטה ברוטב עגבניות", calories: 110, protein: 3.5, carbs: 18, fat: 2.5 },
+  { id: "p7", name: "פסטה קרבונרה", calories: 180, protein: 8, carbs: 16, fat: 9 },
+  { id: "p8", name: "פסטה ברוטב שמנת", calories: 165, protein: 5, carbs: 17, fat: 8 },
+  { id: "p9", name: "פסטה עם טונה", calories: 145, protein: 9, carbs: 16, fat: 4.5 },
+  { id: "p10", name: "לזניה בשר", calories: 160, protein: 9, carbs: 14, fat: 7 },
+  { id: "p11", name: "ניוקי מבושל", calories: 133, protein: 3.5, carbs: 27, fat: 0.5 },
+  { id: "p12", name: "פסטה יבשה (לא מבושלת)", calories: 371, protein: 13, carbs: 75, fat: 1.5 },
 
   // ביצים לפי גודל
   { id: "e1", name: "ביצה גודל S (45 ג׳)", calories: 143, protein: 12.6, carbs: 0.7, fat: 9.5, serving: 45 },
@@ -56,4 +70,3 @@ export const GLOBAL_FOODS: Food[] = [
   { id: "b2", name: "פרכית אורז", calories: 387, protein: 8, carbs: 81, fat: 3, serving: 8 },
   { id: "b3", name: "פיתה מלאה", calories: 262, protein: 9.5, carbs: 51, fat: 1.6, serving: 70 },
 ];
-
