@@ -116,6 +116,23 @@ function ThemeSync() {
   useEffect(() => {
     startSync();
   }, []);
+  useEffect(() => {
+    let alive = true;
+    void import("../lib/googleFit").then(({ autoSyncStepsIfConnected }) => {
+      if (!alive) return;
+      void autoSyncStepsIfConnected();
+    });
+    const onFocus = () => {
+      void import("../lib/googleFit").then(({ autoSyncStepsIfConnected }) => {
+        void autoSyncStepsIfConnected();
+      });
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
   return null;
 }
 
