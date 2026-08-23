@@ -2,6 +2,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+/** Project defaults (publishable key is safe for client-side use). Env vars override these. */
+const DEFAULT_SUPABASE_URL = 'https://lwlvvcgufkdhuyhxhfdh.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_3YicPcpdjZZTShJVDJqthA_RLF1O5XX';
+
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
@@ -27,9 +31,14 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 export function getSupabaseEnv(): { url: string; key: string } | null {
-  const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
+  const SUPABASE_URL =
+    import.meta.env['VITE_SUPABASE_URL'] ||
+    process.env['SUPABASE_URL'] ||
+    DEFAULT_SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
+    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
+    process.env['SUPABASE_PUBLISHABLE_KEY'] ||
+    DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     return null;
@@ -42,10 +51,8 @@ function createSupabaseClient(): SupabaseClient<Database> {
 
   if (!env) {
     const message =
-      'Missing Supabase environment variable(s): SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY. Connect Supabase or set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.';
+      'Missing Supabase environment variable(s): SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY.';
     console.error(`[Supabase] ${message}`);
-    // Soft-fail: return a client pointed at a dummy URL so imports do not crash the UI.
-    // Real calls will fail with a network/auth error that screens can handle.
     return createClient<Database>('https://placeholder.supabase.co', 'public-anon-key', {
       auth: {
         storage: typeof window !== 'undefined' ? localStorage : undefined,
