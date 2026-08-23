@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/Stat";
 import { getSupabaseEnv, supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -85,18 +86,52 @@ function AuthPage() {
     }
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth`,
-          queryParams: {
-            prompt: "select_account",
-          },
-        },
+      // Prefer Lovable Cloud Auth — handles Google OAuth without requiring
+      // the Google client secret to be configured on the Supabase project.
+      const lovableResult = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/auth`,
       });
-      if (error) throw error;
+
+      if (lovableResult.redirected) {
+        // Browser is navigating to Google / Lovable — stop here.
+        return;
+      }
+
+      if (lovableResult.error) {
+        // Fall back to native Supabase OAuth (needs secret configured in dashboard).
+        const msg = String(
+          lovableResult.error instanceof Error
+            ? lovableResult.error.message
+            : (lovableResult.error as { message?: string })?.message ?? lovableResult.error,
+        );
+        console.warn("[auth] Lovable Google failed, trying Supabase native", msg);
+
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: `${window.location.origin}/auth`,
+            queryParams: { prompt: "select_account" },
+          },
+        });
+        if (error) throw error;
+        return;
+      }
+
+      // Tokens already applied via setSession inside lovable helper
+      toast.success("התחברת בהצלחה");
+      void navigate({ to: "/settings" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "ההתחברות עם Google נכשלה");
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error && "msg" in error
+            ? String((error as { msg: string }).msg)
+            : "ההתחברות עם Google נכשלה";
+      toast.error(
+        /missing OAuth secret|Unsupported provider/i.test(message)
+          ? "התחברות Google עדיין לא מוגדרת במלואה בשרת. נסה אימייל, או השתמש בגרסת Lovable."
+          : message,
+      );
       setBusy(false);
     }
   };
@@ -154,8 +189,7 @@ function AuthPage() {
               <p className="font-medium text-destructive">סנכרון בענן לא מוגדר בסביבה הזו</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 חסרים משתני הסביבה <span dir="ltr">VITE_SUPABASE_URL</span> ו־
-                <span dir="ltr">VITE_SUPABASE_PUBLISHABLE_KEY</span>. הגדר אותם ב־Vercel / ב־.env
-                המקומי, או חבר Supabase ב-Lovable Cloud.
+                <span dir="ltr">VITE_SUPABASE_PUBLISHABLE_KEY</span>.
               </p>
             </div>
           </div>
