@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Dumbbell, Droplets, Footprints, Plus, RotateCcw, TrendingDown, UtensilsCrossed } from "lucide-react";
+import { Droplets, Footprints, Plus, RotateCcw, TrendingDown, UtensilsCrossed } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { Card, MacroTile, Ring } from "@/components/Stat";
@@ -120,21 +120,10 @@ function Dashboard() {
 
       {showHuaweiHint && <HuaweiStepsHint onSync={() => setStepsOpen(true)} />}
 
-      {/* מתג יום אימון / יום מנוחה */}
-      <Card className="flex flex-wrap items-center justify-between gap-3 py-3">
-        <div className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-xl bg-accent text-accent-foreground">
-            <Dumbbell className="size-4" />
-          </span>
-          <div>
-            <p className="text-xs text-muted-foreground">סוג היום</p>
-            <p className="text-sm font-semibold">
-              {dayMode === "training" ? "יום אימון" : "יום מנוחה"}
-            </p>
-          </div>
-        </div>
+      {/* Dropdown קומפקטי בלבד */}
+      <div className="flex justify-center">
         <Select value={dayMode} onValueChange={onModeChange}>
-          <SelectTrigger className="w-[160px] rounded-full">
+          <SelectTrigger className="h-9 w-[140px] rounded-full text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -142,7 +131,7 @@ function Dashboard() {
             <SelectItem value="rest">יום מנוחה</SelectItem>
           </SelectContent>
         </Select>
-      </Card>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <MacroTile label="קלוריות" value={totals.calories} goal={goals.calorieGoal} color="primary" unit="קל׳" />
