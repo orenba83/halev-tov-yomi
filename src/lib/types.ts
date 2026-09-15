@@ -72,8 +72,19 @@ export interface ChatMessage {
   image?: string;
 }
 
+/** פרופיל יעדים למאקרו וקלוריות */
+export interface MacroGoals {
+  calorieGoal: number;
+  proteinGoal: number;
+  carbGoal: number;
+  fatGoal: number;
+}
+
+export type DayMode = "training" | "rest";
+
 export interface Settings {
   name: string;
+  /** יעדים כלליים (נשמרים לתאימות לאחור; משתמשים בפרופילים החדשים) */
   calorieGoal: number;
   stepGoal: number;
   waterGoal: number;
@@ -85,6 +96,10 @@ export interface Settings {
   huaweiEmail?: string;
   huaweiConnected?: boolean;
   huaweiLastSync?: string;
+  /** יעדים ליום אימון */
+  trainingGoals?: MacroGoals;
+  /** יעדים ליום מנוחה */
+  restGoals?: MacroGoals;
 }
 
 export interface AppState {
@@ -98,4 +113,6 @@ export interface AppState {
   recent: string[];
   favorites: string[];
   chat: ChatMessage[];
+  /** מצב יום (אימון / מנוחה) לפי תאריך YYYY-MM-DD */
+  dayModes?: Record<string, DayMode>;
 }
