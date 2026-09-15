@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Cloud,
   Download,
+  Dumbbell,
   Link2,
   LogOut,
   Moon,
@@ -23,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { actions, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import type { AppState } from "@/lib/types";
+import type { AppState, MacroGoals } from "@/lib/types";
 import { displayNameForEmail } from "@/lib/sharedAccount";
 import {
   clearFitToken,
@@ -46,40 +47,73 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
+function goalsToForm(g?: MacroGoals) {
+  return {
+    calorieGoal: String(g?.calorieGoal ?? 2200),
+    proteinGoal: String(g?.proteinGoal ?? 150),
+    carbGoal: String(g?.carbGoal ?? 220),
+    fatGoal: String(g?.fatGoal ?? 70),
+  };
+}
+
 function SettingsPage() {
   const state = useStore();
   const s = state.settings;
-  const [form, setForm] = useState({
-    name: s.name,
-    calorieGoal: String(s.calorieGoal),
-    stepGoal: String(s.stepGoal),
-    waterGoal: String(s.waterGoal),
-    proteinGoal: String(s.proteinGoal),
-    carbGoal: String(s.carbGoal),
-    fatGoal: String(s.fatGoal),
-  });
+  const [name, setName] = useState(s.name);
+  const [stepGoal, setStepGoal] = useState(String(s.stepGoal));
+  const [waterGoal, setWaterGoal] = useState(String(s.waterGoal));
+  const [training, setTraining] = useState(() => goalsToForm(s.trainingGoals ?? {
+    calorieGoal: Math.round(s.calorieGoal * 1.15),
+    proteinGoal: Math.round(s.proteinGoal * 1.15),
+    carbGoal: Math.round(s.carbGoal * 1.2),
+    fatGoal: Math.round(s.fatGoal * 1.05),
+  }));
+  const [rest, setRest] = useState(() => goalsToForm(s.restGoals ?? {
+    calorieGoal: s.calorieGoal,
+    proteinGoal: s.proteinGoal,
+    carbGoal: s.carbGoal,
+    fatGoal: s.fatGoal,
+  }));
 
-  const macroCals =
-    Number(form.proteinGoal || 0) * 4 + Number(form.carbGoal || 0) * 4 + Number(form.fatGoal || 0) * 9;
+  const parseGoals = (f: ReturnType<typeof goalsToForm>): MacroGoals | null => {
+    const nums = {
+      calorieGoal: Number(f.calorieGoal),
+      proteinGoal: Number(f.proteinGoal),
+      carbGoal: Number(f.carbGoal),
+      fatGoal: Number(f.fatGoal),
+    };
+    if (Object.values(nums).some((n) => !Number.isFinite(n) || n <= 0)) return null;
+    return nums;
+  };
+
+  const macroCals = (f: ReturnType<typeof goalsToForm>) =>
+    Number(f.proteinGoal || 0) * 4 + Number(f.carbGoal || 0) * 4 + Number(f.fatGoal || 0) * 9;
 
   const save = () => {
-    const nums = {
-      calorieGoal: Number(form.calorieGoal),
-      stepGoal: Number(form.stepGoal),
-      waterGoal: Number(form.waterGoal),
-      proteinGoal: Number(form.proteinGoal),
-      carbGoal: Number(form.carbGoal),
-      fatGoal: Number(form.fatGoal),
-    };
-    if (!form.name.trim()) {
+    if (!name.trim()) {
       toast.error("יש להזין שם");
       return;
     }
-    if (Object.values(nums).some((n) => !Number.isFinite(n) || n <= 0)) {
+    const t = parseGoals(training);
+    const r = parseGoals(rest);
+    const steps = Number(stepGoal);
+    const water = Number(waterGoal);
+    if (!t || !r || !Number.isFinite(steps) || steps <= 0 || !Number.isFinite(water) || water <= 0) {
       toast.error("כל היעדים חייבים להיות מספרים חיוביים");
       return;
     }
-    actions.updateSettings({ name: form.name.trim(), ...nums });
+    actions.updateSettings({
+      name: name.trim(),
+      stepGoal: steps,
+      waterGoal: water,
+      trainingGoals: t,
+      restGoals: r,
+      // שמירה גם בשדות הישנים (תאימות) — יעדי מנוחה כברירת מחדל
+      calorieGoal: r.calorieGoal,
+      proteinGoal: r.proteinGoal,
+      carbGoal: r.carbGoal,
+      fatGoal: r.fatGoal,
+    });
     toast.success("היעדים נשמרו");
   };
 
@@ -115,25 +149,103 @@ function SettingsPage() {
       </header>
 
       <Card className="space-y-4">
-        <h2 className="font-bold">פרופיל ויעדים יומיים</h2>
+        <h2 className="font-bold">פרופיל</h2>
         <div className="space-y-1.5">
           <Label>שם</Label>
-          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NumField label="יעד צעדים" value={stepGoal} onChange={setStepGoal} />
+          <NumField label="יעד מים (מ״ל)" value={waterGoal} onChange={setWaterGoal} />
+        </div>
+      </Card>
+
+      <Card className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Dumbbell className="size-5 text-primary" />
+          <h2 className="font-bold">יעדים — יום אימון</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">יעדים גבוהים יותר לימי אימון</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NumField
+            label="יעד קלוריות"
+            value={training.calorieGoal}
+            onChange={(v) => setTraining({ ...training, calorieGoal: v })}
+          />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <NumField label="יעד קלוריות" value={form.calorieGoal} onChange={(v) => setForm({ ...form, calorieGoal: v })} />
-          <NumField label="יעד צעדים" value={form.stepGoal} onChange={(v) => setForm({ ...form, stepGoal: v })} />
-          <NumField label="יעד מים (מ״ל)" value={form.waterGoal} onChange={(v) => setForm({ ...form, waterGoal: v })} />
+          <MacroField
+            label="חלבון (ג׳)"
+            value={training.proteinGoal}
+            onChange={(v) => setTraining({ ...training, proteinGoal: v })}
+            kcal={Number(training.proteinGoal || 0) * 4}
+          />
+          <MacroField
+            label="פחמימות (ג׳)"
+            value={training.carbGoal}
+            onChange={(v) => setTraining({ ...training, carbGoal: v })}
+            kcal={Number(training.carbGoal || 0) * 4}
+          />
+          <MacroField
+            label="שומן (ג׳)"
+            value={training.fatGoal}
+            onChange={(v) => setTraining({ ...training, fatGoal: v })}
+            kcal={Number(training.fatGoal || 0) * 9}
+          />
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <MacroField label="חלבון (ג׳)" value={form.proteinGoal} onChange={(v) => setForm({ ...form, proteinGoal: v })} kcal={Number(form.proteinGoal || 0) * 4} />
-          <MacroField label="פחמימות (ג׳)" value={form.carbGoal} onChange={(v) => setForm({ ...form, carbGoal: v })} kcal={Number(form.carbGoal || 0) * 4} />
-          <MacroField label="שומן (ג׳)" value={form.fatGoal} onChange={(v) => setForm({ ...form, fatGoal: v })} kcal={Number(form.fatGoal || 0) * 9} />
-        </div>
-        <p className={cn("text-xs", Math.abs(macroCals - Number(form.calorieGoal || 0)) > 150 ? "text-destructive" : "text-muted-foreground")}>
-          סך המאקרו: {Math.round(macroCals)} קק״ל מתוך יעד {form.calorieGoal || 0} קק״ל
+        <p
+          className={cn(
+            "text-xs",
+            Math.abs(macroCals(training) - Number(training.calorieGoal || 0)) > 150
+              ? "text-destructive"
+              : "text-muted-foreground",
+          )}
+        >
+          סך המאקרו: {Math.round(macroCals(training))} קק״ל מתוך יעד {training.calorieGoal || 0} קק״ל
         </p>
-        <Button onClick={save}>שמירת יעדים</Button>
+      </Card>
+
+      <Card className="space-y-4">
+        <h2 className="font-bold">יעדים — יום מנוחה</h2>
+        <p className="text-xs text-muted-foreground">יעדים לימי מנוחה (ברירת מחדל)</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NumField
+            label="יעד קלוריות"
+            value={rest.calorieGoal}
+            onChange={(v) => setRest({ ...rest, calorieGoal: v })}
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <MacroField
+            label="חלבון (ג׳)"
+            value={rest.proteinGoal}
+            onChange={(v) => setRest({ ...rest, proteinGoal: v })}
+            kcal={Number(rest.proteinGoal || 0) * 4}
+          />
+          <MacroField
+            label="פחמימות (ג׳)"
+            value={rest.carbGoal}
+            onChange={(v) => setRest({ ...rest, carbGoal: v })}
+            kcal={Number(rest.carbGoal || 0) * 4}
+          />
+          <MacroField
+            label="שומן (ג׳)"
+            value={rest.fatGoal}
+            onChange={(v) => setRest({ ...rest, fatGoal: v })}
+            kcal={Number(rest.fatGoal || 0) * 9}
+          />
+        </div>
+        <p
+          className={cn(
+            "text-xs",
+            Math.abs(macroCals(rest) - Number(rest.calorieGoal || 0)) > 150
+              ? "text-destructive"
+              : "text-muted-foreground",
+          )}
+        >
+          סך המאקרו: {Math.round(macroCals(rest))} קק״ל מתוך יעד {rest.calorieGoal || 0} קק״ל
+        </p>
+        <Button onClick={save}>שמירת כל היעדים</Button>
       </Card>
 
       <Card className="space-y-3">
@@ -169,7 +281,12 @@ function SettingsPage() {
           </Button>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-accent">
             <Upload className="size-4" /> שחזור מגיבוי
-            <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])} />
+            <input
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])}
+            />
           </label>
           <Button
             variant="ghost"
@@ -405,7 +522,8 @@ function HuaweiCard() {
           onBlur={() => setGoogleClientId(clientId)}
         />
         <p className="text-[11px] text-muted-foreground">
-          מ־Google Cloud Console → OAuth Client מטיפוס Web, עם כתובת האתר ב־Authorized JavaScript origins. יש להפעיל Fitness API.
+          מ־Google Cloud Console → OAuth Client מטיפוס Web, עם כתובת האתר ב־Authorized JavaScript origins.
+          יש להפעיל Fitness API.
         </p>
       </div>
 
@@ -433,65 +551,6 @@ function HuaweiCard() {
           <Link2 className="size-4" /> {busy ? "מתחבר…" : "חיבור Google Fit (אוטומטי)"}
         </Button>
       )}
-
-      <details className="rounded-2xl border border-border p-3">
-        <summary className="cursor-pointer text-sm font-semibold">גיבוי: ייבוא קובץ מ־Huawei Health</summary>
-        <div className="mt-3 space-y-2">
-          <p className="text-xs text-muted-foreground">
-            Health → אני → הגדרות פרטיות → ייצוא נתונים, ואז העלה כאן JSON/CSV.
-          </p>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium hover:bg-accent">
-            <Upload className="size-4" /> העלאת קובץ צעדים
-            <input
-              type="file"
-              accept=".json,.csv,text/csv,application/json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                  const text = String(reader.result);
-                  let rows: { date: string; steps: number }[] = [];
-                  try {
-                    const json = JSON.parse(text);
-                    const arr = Array.isArray(json) ? json : (json.steps ?? json.data ?? []);
-                    rows = (arr as any[])
-                      .map((r) => ({
-                        date: String(r.date ?? r.day ?? r.time ?? "").slice(0, 10),
-                        steps: Number(r.steps ?? r.value ?? r.stepCount ?? 0),
-                      }))
-                      .filter((r) => r.date.length === 10 && r.steps > 0);
-                  } catch {
-                    rows = text
-                      .split(/\r?\n/)
-                      .slice(1)
-                      .map((line) => {
-                        const parts = line.split(/[,;\t]/);
-                        return {
-                          date: String(parts[0] ?? "").trim().slice(0, 10),
-                          steps: Number(parts[1]),
-                        };
-                      })
-                      .filter((r) => r.date.length === 10 && Number.isFinite(r.steps) && r.steps > 0);
-                  }
-                  if (!rows.length) {
-                    toast.error("לא נמצאו נתוני צעדים בקובץ");
-                    return;
-                  }
-                  rows.forEach((r) => actions.setSteps(r.date, r.steps));
-                  actions.updateSettings({
-                    huaweiLastSync: new Date().toISOString(),
-                    huaweiConnected: true,
-                  });
-                  toast.success(`סונכרנו ${rows.length} ימי צעדים`);
-                };
-                reader.readAsText(file);
-              }}
-            />
-          </label>
-        </div>
-      </details>
     </Card>
   );
 }
