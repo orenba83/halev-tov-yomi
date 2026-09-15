@@ -3,8 +3,10 @@ import { GLOBAL_FOODS } from "./foods";
 import type {
   AppState,
   ChatMessage,
+  DayMode,
   Food,
   LogEntry,
+  MacroGoals,
   MeasurementEntry,
   Settings,
   WaterEntry,
@@ -26,6 +28,15 @@ export const KEEP_DAYS_LONG = 183;
 const daysAgo = (key: string) =>
   Math.floor((Date.now() - new Date(key + "T00:00:00").getTime()) / 86400000);
 
+function defaultMacroGoals(s: Partial<Settings> = {}): MacroGoals {
+  return {
+    calorieGoal: s.calorieGoal ?? 2200,
+    proteinGoal: s.proteinGoal ?? 150,
+    carbGoal: s.carbGoal ?? 220,
+    fatGoal: s.fatGoal ?? 70,
+  };
+}
+
 function seed(): AppState {
   const now = new Date();
   const dayAgo = (n: number) => toKey(new Date(now.getTime() - n * 86400000));
@@ -37,16 +48,29 @@ function seed(): AppState {
   const stepSeed = [8200, 6400, 9100, 7300, 10400, 5200, 8800, 7600, 9900, 6019];
   const steps: Record<string, number> = {};
   stepSeed.forEach((v, i) => (steps[dayAgo(i)] = v));
+  const baseGoals = defaultMacroGoals();
   return {
     settings: {
       name: "דנה",
-      calorieGoal: 2200,
+      calorieGoal: baseGoals.calorieGoal,
       stepGoal: 10000,
       waterGoal: 2500,
-      proteinGoal: 150,
-      carbGoal: 220,
-      fatGoal: 70,
+      proteinGoal: baseGoals.proteinGoal,
+      carbGoal: baseGoals.carbGoal,
+      fatGoal: baseGoals.fatGoal,
       theme: "light",
+      trainingGoals: {
+        calorieGoal: 2600,
+        proteinGoal: 180,
+        carbGoal: 280,
+        fatGoal: 75,
+      },
+      restGoals: {
+        calorieGoal: 2000,
+        proteinGoal: 140,
+        carbGoal: 180,
+        fatGoal: 65,
+      },
     },
     entries: [
       {
@@ -103,6 +127,7 @@ function seed(): AppState {
         text: "שלום! אני היועץ התזונתי החכם שלך. אפשר לשאול אותי כל שאלה על תזונה או אימונים, לדבר איתי בקול, או להעלות תמונה של מנה/מוצר ואזהה עבורך את הערכים.",
       },
     ],
+    dayModes: {},
   };
 }
 
@@ -129,6 +154,20 @@ function migrate(raw: any): AppState {
     }));
   }
   next.measurements = (next.measurements ?? []).map((m) => ({ ...m, hips: m.hips ?? 0 }));
+  // תאימות לאחור: אם אין פרופילי אימון/מנוחה – נבנה אותם מהיעדים הקיימים
+  const s = next.settings;
+  if (!s.trainingGoals) {
+    s.trainingGoals = {
+      calorieGoal: Math.round((s.calorieGoal ?? 2200) * 1.15),
+      proteinGoal: Math.round((s.proteinGoal ?? 150) * 1.15),
+      carbGoal: Math.round((s.carbGoal ?? 220) * 1.2),
+      fatGoal: Math.round((s.fatGoal ?? 70) * 1.05),
+    };
+  }
+  if (!s.restGoals) {
+    s.restGoals = defaultMacroGoals(s);
+  }
+  next.dayModes = next.dayModes ?? {};
   return prune(next);
 }
 
@@ -274,6 +313,13 @@ export const actions = {
   updateSettings(patch: Partial<Settings>) {
     set((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
   },
+  /** הגדרת מצב היום (אימון / מנוחה) לתאריך נתון */
+  setDayMode(date: string, mode: DayMode) {
+    set((s) => ({
+      ...s,
+      dayModes: { ...(s.dayModes ?? {}), [date]: mode },
+    }));
+  },
   addChat(msg: Omit<ChatMessage, "id">) {
     const id = uid();
     set((s) => ({ ...s, chat: [...s.chat, { ...msg, id }] }));
@@ -313,6 +359,30 @@ export function dayTotals(s: AppState, date: string) {
 
 export function dayWater(s: AppState, date: string) {
   return s.water.filter((w) => w.date === date).reduce((a, w) => a + w.ml, 0);
+}
+
+/** מצב היום הנוכחי (ברירת מחדל: מנוחה) */
+export function getDayMode(s: AppState, date: string): DayMode {
+  return s.dayModes?.[date] ?? "rest";
+}
+
+/** יעדי מאקרו פעילים לפי מצב היום */
+export function getActiveGoals(s: AppState, date: string): MacroGoals {
+  const mode = getDayMode(s, date);
+  const settings = s.settings;
+  if (mode === "training" && settings.trainingGoals) {
+    return settings.trainingGoals;
+  }
+  if (mode === "rest" && settings.restGoals) {
+    return settings.restGoals;
+  }
+  // נפילה ליעדים הכלליים
+  return {
+    calorieGoal: settings.calorieGoal,
+    proteinGoal: settings.proteinGoal,
+    carbGoal: settings.carbGoal,
+    fatGoal: settings.fatGoal,
+  };
 }
 
 export const heDate = (key: string) =>
