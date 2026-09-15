@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Droplets, Flame, Footprints, Plus, RotateCcw, TrendingDown, UtensilsCrossed } from "lucide-react";
+import { Dumbbell, Droplets, Footprints, Plus, RotateCcw, TrendingDown, UtensilsCrossed } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { Card, MacroTile, Ring } from "@/components/Stat";
@@ -9,9 +9,25 @@ import { MetricHistoryButton } from "@/components/MetricHistoryDialog";
 import { FoodPickerDialog } from "@/components/FoodPickerDialog";
 import { HuaweiStepsHint, HuaweiStepsSync } from "@/components/HuaweiStepsSync";
 import { Button } from "@/components/ui/button";
-import { actions, dayTotals, dayWater, heDayLabel, todayKey, useStore } from "@/lib/store";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  actions,
+  dayTotals,
+  dayWater,
+  getActiveGoals,
+  getDayMode,
+  heDayLabel,
+  todayKey,
+  useStore,
+} from "@/lib/store";
 import { lastSyncIsToday } from "@/lib/huaweiSteps";
-import { MEALS, type LogEntry, type MealKey } from "@/lib/types";
+import { MEALS, type DayMode, type LogEntry, type MealKey } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,7 +53,9 @@ function Dashboard() {
 
   const totals = dayTotals(state, date);
   const { settings } = state;
-  const remaining = Math.max(0, settings.calorieGoal - totals.calories);
+  const dayMode = getDayMode(state, date);
+  const goals = getActiveGoals(state, date);
+  const remaining = Math.max(0, goals.calorieGoal - totals.calories);
   const steps = state.steps[date] ?? 0;
   const water = dayWater(state, date);
   const showHuaweiHint = date === todayKey() && !lastSyncIsToday(settings.huaweiLastSync);
@@ -87,6 +105,12 @@ function Dashboard() {
     toast.success(`נוסף ל${nextMeal.label}: ${e.name}`);
   };
 
+  const onModeChange = (value: string) => {
+    const mode = value as DayMode;
+    actions.setDayMode(date, mode);
+    toast.success(mode === "training" ? "עברת ליום אימון" : "עברת ליום מנוחה");
+  };
+
   return (
     <div className="space-y-4">
       <header className="text-center">
@@ -96,11 +120,35 @@ function Dashboard() {
 
       {showHuaweiHint && <HuaweiStepsHint onSync={() => setStepsOpen(true)} />}
 
+      {/* מתג יום אימון / יום מנוחה */}
+      <Card className="flex flex-wrap items-center justify-between gap-3 py-3">
+        <div className="flex items-center gap-2">
+          <span className="grid size-9 place-items-center rounded-xl bg-accent text-accent-foreground">
+            <Dumbbell className="size-4" />
+          </span>
+          <div>
+            <p className="text-xs text-muted-foreground">סוג היום</p>
+            <p className="text-sm font-semibold">
+              {dayMode === "training" ? "יום אימון" : "יום מנוחה"}
+            </p>
+          </div>
+        </div>
+        <Select value={dayMode} onValueChange={onModeChange}>
+          <SelectTrigger className="w-[160px] rounded-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="training">יום אימון</SelectItem>
+            <SelectItem value="rest">יום מנוחה</SelectItem>
+          </SelectContent>
+        </Select>
+      </Card>
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <MacroTile label="קלוריות" value={totals.calories} goal={settings.calorieGoal} color="primary" unit="קל׳" />
-        <MacroTile label="חלבון" value={totals.protein} goal={settings.proteinGoal} color="protein" />
-        <MacroTile label="פחמימות" value={totals.carbs} goal={settings.carbGoal} color="carb" />
-        <MacroTile label="שומן" value={totals.fat} goal={settings.fatGoal} color="fat" />
+        <MacroTile label="קלוריות" value={totals.calories} goal={goals.calorieGoal} color="primary" unit="קל׳" />
+        <MacroTile label="חלבון" value={totals.protein} goal={goals.proteinGoal} color="protein" />
+        <MacroTile label="פחמימות" value={totals.carbs} goal={goals.carbGoal} color="carb" />
+        <MacroTile label="שומן" value={totals.fat} goal={goals.fatGoal} color="fat" />
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">
@@ -111,10 +159,10 @@ function Dashboard() {
       </div>
 
       <Card className="flex flex-col items-center gap-5 md:flex-row md:justify-center">
-        <Ring value={totals.calories} goal={settings.calorieGoal} label={`${remaining}`} sub="קל׳ נותרו" />
+        <Ring value={totals.calories} goal={goals.calorieGoal} label={`${remaining}`} sub="קל׳ נותרו" />
         <div className="grid w-full max-w-sm grid-cols-3 gap-2 text-center">
           <Metric title="סה״כ נאכל" value={`${Math.round(totals.calories)}`} />
-          <Metric title="יעד" value={`${settings.calorieGoal}`} />
+          <Metric title="יעד" value={`${goals.calorieGoal}`} />
           <Metric title="נותר" value={`${remaining}`} />
         </div>
       </Card>
