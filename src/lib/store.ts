@@ -38,16 +38,6 @@ function defaultMacroGoals(s: Partial<Settings> = {}): MacroGoals {
 }
 
 function seed(): AppState {
-  const now = new Date();
-  const dayAgo = (n: number) => toKey(new Date(now.getTime() - n * 86400000));
-  const weights: WeightEntry[] = [8, 6, 4, 2, 0].map((n, i) => ({
-    id: `w${i}`,
-    date: dayAgo(n),
-    value: +(78.4 - i * 0.35).toFixed(1),
-  }));
-  const stepSeed = [8200, 6400, 9100, 7300, 10400, 5200, 8800, 7600, 9900, 6019];
-  const steps: Record<string, number> = {};
-  stepSeed.forEach((v, i) => (steps[dayAgo(i)] = v));
   const baseGoals = defaultMacroGoals();
   return {
     settings: {
@@ -72,54 +62,15 @@ function seed(): AppState {
         fatGoal: 65,
       },
     },
-    entries: [
-      {
-        id: "e1",
-        date: todayKey(),
-        meal: "breakfast",
-        name: "שיבולת שועל",
-        grams: 60,
-        calories: 233,
-        protein: 10.2,
-        carbs: 39.6,
-        fat: 4.2,
-      },
-      {
-        id: "e2",
-        date: todayKey(),
-        meal: "breakfast",
-        name: "יוגורט יווני 0%",
-        grams: 150,
-        calories: 89,
-        protein: 15,
-        carbs: 5.4,
-        fat: 0.6,
-      },
-      {
-        id: "e3",
-        date: todayKey(),
-        meal: "lunch",
-        name: "חזה עוף בגריל",
-        grams: 180,
-        calories: 297,
-        protein: 55.8,
-        carbs: 0,
-        fat: 6.5,
-      },
-    ],
-    water: [
-      { id: "wa1", date: todayKey(), ml: 500 },
-      { id: "wa2", date: todayKey(), ml: 250 },
-    ],
-    steps,
-    weights,
-    measurements: [
-      { id: "m1", date: dayAgo(7), waist: 86, chest: 102, arm: 35, thigh: 58, hips: 96 },
-      { id: "m2", date: todayKey(), waist: 84.5, chest: 102.5, arm: 35.4, thigh: 58, hips: 95.2 },
-    ],
+    // יום חדש תמיד מתחיל מ־0 — בלי מזון / מים דמה
+    entries: [],
+    water: [],
+    steps: {},
+    weights: [],
+    measurements: [],
     customFoods: [],
-    recent: ["g1", "g6", "g18", "g9"],
-    favorites: ["g1"],
+    recent: [],
+    favorites: [],
     chat: [
       {
         id: "c1",
@@ -168,6 +119,8 @@ function migrate(raw: any): AppState {
     s.restGoals = defaultMacroGoals(s);
   }
   next.dayModes = next.dayModes ?? {};
+  next.entries = next.entries ?? [];
+  next.water = next.water ?? [];
   return prune(next);
 }
 
