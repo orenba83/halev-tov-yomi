@@ -6,7 +6,6 @@ import {
   Flame,
   Footprints,
   Plus,
-  RotateCcw,
   TrendingDown,
   UtensilsCrossed,
   Wheat,
@@ -14,7 +13,7 @@ import {
 } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
-import { Card, DarkCalorieRing, MacroSideCard, MiniPercentRing } from "@/components/Stat";
+import { Card, DarkCalorieRing, MacroSideCard } from "@/components/Stat";
 import { DayNav } from "@/components/DayNav";
 import { MetricHistoryButton } from "@/components/MetricHistoryDialog";
 import { FoodPickerDialog } from "@/components/FoodPickerDialog";
@@ -37,7 +36,7 @@ import {
   todayKey,
   useStore,
 } from "@/lib/store";
-import { MEALS, type DayMode, type LogEntry, type MealKey } from "@/lib/types";
+import { MEALS, type DayMode, type MealKey } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -68,8 +67,6 @@ function Dashboard() {
   const remaining = Math.max(0, goals.calorieGoal - totals.calories);
   const steps = state.steps[date] ?? 0;
   const water = dayWater(state, date);
-  const caloriePct =
-    goals.calorieGoal > 0 ? Math.min(100, (totals.calories / goals.calorieGoal) * 100) : 0;
   const waterPct =
     settings.waterGoal > 0 ? Math.min(100, (water / settings.waterGoal) * 100) : 0;
 
@@ -84,34 +81,6 @@ function Dashboard() {
 
   const nextMeal =
     MEALS.find((m) => !state.entries.some((e) => e.date === date && e.meal === m.key)) ?? MEALS[3]!;
-
-  const recentFromHistory = useMemo(() => {
-    const seen = new Set<string>();
-    const out: LogEntry[] = [];
-    for (let i = state.entries.length - 1; i >= 0; i--) {
-      const e = state.entries[i]!;
-      const key = `${e.name}|${e.grams}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(e);
-      if (out.length >= 6) break;
-    }
-    return out;
-  }, [state.entries]);
-
-  const reAdd = (e: LogEntry) => {
-    actions.addEntry({
-      date,
-      meal: nextMeal.key,
-      name: e.name,
-      grams: e.grams,
-      calories: e.calories,
-      protein: e.protein,
-      carbs: e.carbs,
-      fat: e.fat,
-    });
-    toast.success(`נוסף ל${nextMeal.label}: ${e.name}`);
-  };
 
   const onModeChange = (value: string) => {
     const mode = value as DayMode;
@@ -194,25 +163,20 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-sm">
-          <Droplets className="size-6 shrink-0 text-water" />
-          <div className="min-w-0 flex-1">
-            <p className="text-xl font-extrabold tabular-nums leading-none">{water}ml</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">צריכת מים</p>
-          </div>
-          <button
-            type="button"
-            aria-label="הוסף מים"
-            onClick={() => addWaterQuick(250)}
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-[#2ea3f2] text-white shadow-md transition active:scale-95"
-          >
-            <Plus className="size-5" strokeWidth={2.5} />
-          </button>
+      <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-sm">
+        <Droplets className="size-6 shrink-0 text-water" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xl font-extrabold tabular-nums leading-none">{water}ml</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">צריכת מים</p>
         </div>
-        <div className="shrink-0 rounded-2xl border border-border/70 bg-card p-2 shadow-sm">
-          <MiniPercentRing percent={caloriePct} size={56} />
-        </div>
+        <button
+          type="button"
+          aria-label="הוסף מים"
+          onClick={() => addWaterQuick(250)}
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-[#2ea3f2] text-white shadow-md transition active:scale-95"
+        >
+          <Plus className="size-5" strokeWidth={2.5} />
+        </button>
       </div>
 
       <div className="flex flex-wrap justify-center gap-2">
@@ -221,29 +185,6 @@ function Dashboard() {
         <MetricHistoryButton kind="carbs" label="פחמימות" />
         <MetricHistoryButton kind="fat" label="שומן" />
       </div>
-
-      {recentFromHistory.length > 0 && (
-        <Card className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="font-bold">הוסף שוב</h2>
-            <span className="text-xs text-muted-foreground">ל{nextMeal.label}</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {recentFromHistory.map((e) => (
-              <button
-                key={`${e.name}-${e.grams}-${e.id}`}
-                type="button"
-                onClick={() => reAdd(e)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-              >
-                <RotateCcw className="size-3.5 text-primary" />
-                <span className="max-w-[9rem] truncate">{e.name}</span>
-                <span className="text-muted-foreground">{e.grams}ג׳</span>
-              </button>
-            ))}
-          </div>
-        </Card>
-      )}
 
       <Card className="space-y-2">
         <h2 className="font-bold">פירוט לפי ארוחות</h2>
