@@ -70,7 +70,9 @@ const expandQueries = (q: string): string[] => {
     [/^(ביצה|ביצים|egg|eggs)$/, ["ביצה קשה", "ביצת עין", "חביתה", "egg boiled", "omelette"]],
     [/^(חלב|milk)$/, ["חלב 3%", "חלב 1%", "חלב 0%", "whole milk", "skim milk"]],
     [/^(קוטז|קוטג|cottage|cottage cheese)$/, ["קוטג'", "קוטג' 5%", "קוטג' 1%", "cottage cheese"]],
-    [/^(סינטה|sinta)$/, ["סינטה", "סינטה דקה", "סינטה בלדי", "גבינת סינטה", "sinta cheese"]],
+    [/^(סינטה|sinta|sirloin)$/, ["סינטה בקר", "סטייק סינטה", "סינטה צלויה", "beef sirloin", "sirloin steak"]],
+    [/^(פרו\s*0|פרו 0%|pro 0|pro zero|יוגורט פרו)$/, ["יוגורט פרו", "פרו 0%", "יוגורט פרו 0%", "strauss pro", "danone pro", "pro yogurt"]],
+    [/^(פסטרמה|pastrami)$/, ["פסטרמה הודו", "פסטרמה", "פסטרמה בקר", "turkey pastrami", "pastrami"]],
     [/^(גבינה לבנה|גבינה)$/, ["גבינה לבנה", "גבינה לבנה 5%", "גבינה צהובה", "white cheese"]],
     [/^(יוגורט|yogurt)$/, ["יוגורט טבעי", "יוגורט יווני", "יוגורט 0%", "Greek yogurt"]],
     [/^(טונה|tuna)$/, ["טונה במים", "טונה בשמן", "tuna in water"]],
@@ -92,8 +94,7 @@ const expandQueries = (q: string): string[] => {
     if (rx.test(n)) return values;
   }
 
-  const extras: string[] = [q];
-  return extras;
+  return [q];
 };
 
 function diversityBucket(name: string): string {
@@ -167,16 +168,21 @@ export const searchProducts = createServerFn({ method: "GET" })
     const usdaKey = process.env.USDA_API_KEY || "DEMO_KEY";
 
     const requests = queries.flatMap((search) => {
+      const offParams: Record<string, string> = {
+        search_terms: search,
+        search_simple: "1",
+        action: "process",
+        json: "1",
+        page_size: "40",
+        fields: "code,product_name,product_name_he,brands,serving_quantity,nutriments",
+      };
+      if (/[\u0590-\u05FF]/.test(search)) {
+        offParams["tagtype_0"] = "countries";
+        offParams["tag_contains_0"] = "contains";
+        offParams["tag_0"] = "israel";
+      }
       const offUrl =
-        "https://world.openfoodfacts.org/cgi/search.pl?" +
-        new URLSearchParams({
-          search_terms: search,
-          search_simple: "1",
-          action: "process",
-          json: "1",
-          page_size: "40",
-          fields: "code,product_name,product_name_he,brands,serving_quantity,nutriments",
-        });
+        "https://world.openfoodfacts.org/cgi/search.pl?" + new URLSearchParams(offParams);
       const usdaUrl =
         "https://api.nal.usda.gov/fdc/v1/foods/search?" +
         new URLSearchParams({
@@ -219,7 +225,7 @@ export const searchProducts = createServerFn({ method: "GET" })
           out.push(food);
         }
       } catch {
-        /* ignore one failed source */
+        /* ignore */
       }
     }
 
