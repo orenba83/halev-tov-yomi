@@ -1,20 +1,30 @@
 import type { AppState } from "./types";
 import { getSharedState, setSharedState } from "./sharedState.functions";
-
-const STORAGE_KEY = "fitrack_shared_cloud_cache_v1";
-const GITHUB_RAW =
-  "https://raw.githubusercontent.com/orenba83/halev-tov-yomi/main/shared-sync-state.json";
+import {
+  OREN_USERNAME_HE,
+  cloudCacheKeyForUser,
+  getActiveDisplayName,
+} from "./sharedAccount";
 
 export type SharedCloudPayload = {
   v: 1;
   updated_at: string;
   state: AppState;
+  user?: string;
 };
+
+function userSlug(): "oren" | "dana" {
+  return getActiveDisplayName() === OREN_USERNAME_HE ? "oren" : "dana";
+}
+
+function cacheKey(): string {
+  return cloudCacheKeyForUser(getActiveDisplayName());
+}
 
 function readLocalCache(): SharedCloudPayload | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(cacheKey());
     if (!raw) return null;
     return JSON.parse(raw) as SharedCloudPayload;
   } catch {
@@ -24,31 +34,16 @@ function readLocalCache(): SharedCloudPayload | null {
 
 function writeLocalCache(payload: SharedCloudPayload) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  localStorage.setItem(cacheKey(), JSON.stringify(payload));
 }
 
 export async function pullSharedCloud(): Promise<SharedCloudPayload | null> {
+  const user = userSlug();
   try {
-    const data = (await getSharedState()) as SharedCloudPayload | null;
+    const data = (await getSharedState({ data: { user } })) as SharedCloudPayload | null;
     if (data?.v === 1 && data.state) {
       writeLocalCache(data);
       return data;
-    }
-  } catch {
-    /* continue */
-  }
-
-  try {
-    const res = await fetch(`${GITHUB_RAW}?t=${Date.now()}`, {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    });
-    if (res.ok) {
-      const data = (await res.json()) as SharedCloudPayload;
-      if (data?.v === 1 && data.state) {
-        writeLocalCache(data);
-        return data;
-      }
     }
   } catch {
     /* continue */
@@ -58,10 +53,12 @@ export async function pullSharedCloud(): Promise<SharedCloudPayload | null> {
 }
 
 export async function pushSharedCloud(state: AppState): Promise<boolean> {
+  const user = userSlug();
   const payload: SharedCloudPayload = {
     v: 1,
     updated_at: new Date().toISOString(),
     state,
+    user,
   };
   writeLocalCache(payload);
 
