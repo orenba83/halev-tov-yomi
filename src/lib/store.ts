@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { GLOBAL_FOODS } from "./foods";
+import { getActiveDisplayName, storageKeyForUser, SHARED_USERNAME_HE } from "./sharedAccount";
 import type {
   AppState,
   ChatMessage,
@@ -13,7 +14,11 @@ import type {
   WeightEntry,
 } from "./types";
 
-const KEY = "fitrack-state-v2";
+const LEGACY_KEY = "fitrack-state-v2";
+
+function currentKey(): string {
+  return storageKeyForUser(getActiveDisplayName() || SHARED_USERNAME_HE);
+}
 
 export const todayKey = () => toKey(new Date());
 export const toKey = (d: Date) =>
@@ -39,9 +44,10 @@ function defaultMacroGoals(s: Partial<Settings> = {}): MacroGoals {
 
 function seed(): AppState {
   const baseGoals = defaultMacroGoals();
+  const name = getActiveDisplayName() || SHARED_USERNAME_HE;
   return {
     settings: {
-      name: "דנה",
+      name,
       calorieGoal: baseGoals.calorieGoal,
       stepGoal: 10000,
       waterGoal: 2500,
@@ -62,7 +68,6 @@ function seed(): AppState {
         fatGoal: 65,
       },
     },
-    // יום חדש תמיד מתחיל מ־0 — בלי מזון / מים דמה
     entries: [],
     water: [],
     steps: {},
@@ -82,7 +87,6 @@ function seed(): AppState {
   };
 }
 
-/** מנקה נתונים ישנים: יומן/מים/צעדים עד 3 חודשים, משקל והיקפים עד חצי שנה */
 function prune(s: AppState): AppState {
   return {
     ...s,
@@ -105,7 +109,6 @@ function migrate(raw: any): AppState {
     }));
   }
   next.measurements = (next.measurements ?? []).map((m) => ({ ...m, hips: m.hips ?? 0 }));
-  // תאימות לאחור: אם אין פרופילי אימון/מנוחה – נבנה אותם מהיעדים הקיימים
   const s = next.settings;
   if (!s.trainingGoals) {
     s.trainingGoals = {
@@ -132,7 +135,13 @@ function load() {
   if (loaded || typeof window === "undefined") return;
   loaded = true;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    let raw = window.localStorage.getItem(currentKey());
+    if (!raw && currentKey().endsWith("-dana")) {
+      raw = window.localStorage.getItem(LEGACY_KEY);
+      if (raw) {
+        window.localStorage.setItem(currentKey(), raw);
+      }
+    }
     if (raw) state = migrate(JSON.parse(raw));
   } catch {
     /* ignore */
@@ -142,7 +151,7 @@ function load() {
 function persist() {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(state));
+    window.localStorage.setItem(currentKey(), JSON.stringify(state));
   } catch {
     /* ignore */
   }
@@ -161,7 +170,6 @@ function subscribe(cb: () => void) {
   return () => listeners.delete(cb);
 }
 
-/** מנוי לשינויים ללקוחות שאינם רכיבי React (למשל שכבת הסנכרון) */
 export function subscribeStore(cb: () => void) {
   load();
   listeners.add(cb);
@@ -175,8 +183,28 @@ export function getState(): AppState {
   return state;
 }
 
+/** טעינת מצב מחדש לפי המשתמש המחובר (דנה / אורן — נתונים נפרדים) */
+export function reloadStateForActiveUser(): void {
+  if (typeof window === "undefined") return;
+  loaded = true;
+  try {
+    let raw = window.localStorage.getItem(currentKey());
+    if (!raw && currentKey().endsWith("-dana")) {
+      raw = window.localStorage.getItem(LEGACY_KEY);
+    }
+    state = raw ? migrate(JSON.parse(raw)) : seed();
+    const name = getActiveDisplayName();
+    if (name && state.settings.name !== name) {
+      state = { ...state, settings: { ...state.settings, name } };
+      persist();
+    }
+  } catch {
+    state = seed();
+  }
+  listeners.forEach((l) => l());
+}
+
 const getSnapshot = () => state;
-/** תמונת מצב יציבה ל-SSR/הידרציה — מונעת אי-התאמה בין השרת ללקוח */
 const serverState = state;
 const getServerSnapshot = () => serverState;
 
@@ -266,7 +294,6 @@ export const actions = {
   updateSettings(patch: Partial<Settings>) {
     set((s) => ({ ...s, settings: { ...s.settings, ...patch } }));
   },
-  /** הגדרת מצב היום (אימון / מנוחה) לתאריך נתון */
   setDayMode(date: string, mode: DayMode) {
     set((s) => ({
       ...s,
@@ -314,12 +341,10 @@ export function dayWater(s: AppState, date: string) {
   return s.water.filter((w) => w.date === date).reduce((a, w) => a + w.ml, 0);
 }
 
-/** מצב היום הנוכחי (ברירת מחדל: מנוחה) */
 export function getDayMode(s: AppState, date: string): DayMode {
   return s.dayModes?.[date] ?? "rest";
 }
 
-/** יעדי מאקרו פעילים לפי מצב היום */
 export function getActiveGoals(s: AppState, date: string): MacroGoals {
   const mode = getDayMode(s, date);
   const settings = s.settings;
@@ -329,7 +354,6 @@ export function getActiveGoals(s: AppState, date: string): MacroGoals {
   if (mode === "rest" && settings.restGoals) {
     return settings.restGoals;
   }
-  // נפילה ליעדים הכלליים
   return {
     calorieGoal: settings.calorieGoal,
     proteinGoal: settings.proteinGoal,
@@ -351,7 +375,6 @@ export const heShort = (key: string) =>
 export const heWeekday = (key: string) =>
   new Date(key + "T00:00:00").toLocaleDateString("he-IL", { weekday: "short" });
 
-/** תווית "יום בשבוע + תאריך" */
 export const heDayLabel = (key: string) =>
   key === todayKey()
     ? "היום"
