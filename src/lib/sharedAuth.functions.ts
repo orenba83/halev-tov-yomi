@@ -4,6 +4,7 @@ import {
   SHARED_EMAIL,
   SHARED_PASSWORD_INTERNAL,
   SHARED_PASSWORD_UI,
+  displayNameFromUsername,
   isSharedPassword,
   isSharedUsername,
 } from "./sharedAccount";
@@ -43,7 +44,6 @@ async function adminConfirmOrCreate() {
   if (!service) return { ok: false as const, reason: "no-service-role" as const };
 
   const base = supabaseUrl();
-  // List users / create with email_confirm
   const createRes = await fetch(`${base}/auth/v1/admin/users`, {
     method: "POST",
     headers: {
@@ -63,18 +63,12 @@ async function adminConfirmOrCreate() {
 
   const body = (await createRes.json().catch(() => ({}))) as { msg?: string; message?: string };
   const msg = body.msg || body.message || "";
-  // Already exists — try update to confirm
   if (/already|registered|exists/i.test(msg) || createRes.status === 422) {
-    const listRes = await fetch(
-      `${base}/auth/v1/admin/users?page=1&per_page=50`,
-      {
-        headers: { apikey: service, Authorization: `Bearer ${service}` },
-      },
-    );
+    const listRes = await fetch(`${base}/auth/v1/admin/users?page=1&per_page=50`, {
+      headers: { apikey: service, Authorization: `Bearer ${service}` },
+    });
     if (listRes.ok) {
-      const list = (await listRes.json()) as {
-        users?: { id: string; email?: string }[];
-      };
+      const list = (await listRes.json()) as { users?: { id: string; email?: string }[] };
       const user = list.users?.find((u) => u.email?.toLowerCase() === SHARED_EMAIL);
       if (user) {
         await fetch(`${base}/auth/v1/admin/users/${user.id}`, {
@@ -135,7 +129,7 @@ async function passwordGrant() {
 }
 
 /**
- * Shared login for דנה / 1234.
+ * Shared login for דנה or אורן / 1234.
  * Ensures the backend user exists (when service role is available), then returns session tokens.
  */
 export const sharedLogin = createServerFn({ method: "POST" })
@@ -144,12 +138,10 @@ export const sharedLogin = createServerFn({ method: "POST" })
     if (!isSharedUsername(data.username) || !isSharedPassword(data.password)) {
       return { ok: false as const, message: "שם משתמש או סיסמה שגויים" };
     }
-    // Best-effort: confirm/create with service role if Lovable/Vercel injected it
     await adminConfirmOrCreate();
 
     let grant = await passwordGrant();
     if (!grant.ok) {
-      // Try signup once (in case user was never created on this project)
       const key = publishableKey();
       const base = supabaseUrl();
       await fetch(`${base}/auth/v1/signup`, {
@@ -179,9 +171,8 @@ export const sharedLogin = createServerFn({ method: "POST" })
       access_token: grant.access_token,
       refresh_token: grant.refresh_token,
       email: SHARED_EMAIL,
-      displayName: "דנה",
+      displayName: displayNameFromUsername(data.username),
     };
   });
 
-// silence unused in client bundles
 void SHARED_PASSWORD_UI;
