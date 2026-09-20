@@ -37,27 +37,41 @@ function dataUrlToInlineData(dataUrl: string) {
 async function callGemini(contents: unknown[], systemInstruction = SYSTEM) {
   const key = getGeminiKey();
   if (!key) return null;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: systemInstruction }] }, contents, generationConfig: { temperature: 0.2 } }),
-  });
-  if (res.status === 400 || res.status === 401 || res.status === 403) throw new Error("מפתח Gemini לא תקין או שאין לו הרשאה. בדוק אותו בהגדרות AI.");
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        contents,
+        generationConfig: { temperature: 0.2 },
+      }),
+    },
+  );
+  if (res.status === 400 || res.status === 401 || res.status === 403)
+    throw new Error("מפתח Gemini לא תקין או שאין לו הרשאה. בדוק אותו בהגדרות AI.");
   if (res.status === 429) throw new Error("מכסת Gemini החינמית נוצלה כרגע. נסה שוב מאוחר יותר.");
   if (!res.ok) throw new Error(`שגיאת Gemini (${res.status}): ${await res.text()}`);
-  const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+  const data = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  };
   return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim() ?? "";
 }
 
 async function callGateway(body: Record<string, unknown>) {
   const geminiKey = getGeminiKey();
   if (geminiKey) {
-    const messages = Array.isArray(body.messages) ? (body.messages as { role: string; content: unknown }[]) : [];
+    const messages = Array.isArray(body.messages)
+      ? (body.messages as { role: string; content: unknown }[])
+      : [];
     const system = messages.find((m) => m.role === "system")?.content;
-    const contents = messages.filter((m) => m.role !== "system").map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: typeof m.content === "string" ? [{ text: m.content }] : m.content,
-    }));
+    const contents = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: typeof m.content === "string" ? [{ text: m.content }] : m.content,
+      }));
     const result = await callGemini(contents, typeof system === "string" ? system : SYSTEM);
     if (result !== null) return result;
   }
@@ -132,27 +146,59 @@ function mapOffProduct(p: Record<string, unknown>, barcode: string) {
   };
 }
 
+/** חיפוש ברקוד עם סדר עדיפויות בין מאגרים אמינים */
 async function lookupBarcode(barcode: string) {
   const clean = barcode.replace(/\D/g, "").slice(0, 18);
   if (clean.length < 8) return null;
   const ua = { "User-Agent": "HalevTovYomi/1.0 (nutrition app)" };
+  type Hit = {
+    name: string;
+    grams: number;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    barcode: string;
+    score: number;
+  };
+  const hits: Hit[] = [];
 
-  // 1) Open Food Facts v2 by barcode
+  const pushOff = (p: Record<string, unknown>, score: number) => {
+    const food = mapOffProduct(p, clean);
+    if (!food) return;
+    let s = score;
+    if (/[\u0590-\u05FF]/.test(food.name)) s += 15;
+    if (food.protein > 0 || food.carbs > 0 || food.fat > 0) s += 10;
+    hits.push({ ...food, score: s });
+  };
+
+  // 1) Open Food Facts ישראל — עדיפות גבוהה לברקודים ישראליים (729…)
+  if (clean.startsWith("729")) {
+    try {
+      const url = `https://il.openfoodfacts.org/api/v2/product/${encodeURIComponent(clean)}.json?fields=code,product_name,product_name_he,brands,serving_quantity,nutriments`;
+      const res = await fetch(url, { headers: ua, signal: AbortSignal.timeout(7000) });
+      if (res.ok) {
+        const json = (await res.json()) as { status?: number; product?: Record<string, unknown> };
+        if (json.status === 1 && json.product) pushOff(json.product, 100);
+      }
+    } catch {
+      /* continue */
+    }
+  }
+
+  // 2) Open Food Facts עולמי
   try {
     const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(clean)}.json?fields=code,product_name,product_name_he,brands,serving_quantity,nutriments`;
     const res = await fetch(url, { headers: ua, signal: AbortSignal.timeout(8000) });
     if (res.ok) {
       const json = (await res.json()) as { status?: number; product?: Record<string, unknown> };
-      if (json.status === 1 && json.product) {
-        const food = mapOffProduct(json.product, clean);
-        if (food) return food;
-      }
+      if (json.status === 1 && json.product) pushOff(json.product, 90);
     }
   } catch {
     /* continue */
   }
 
-  // 2) Open Food Facts search by code
+  // 3) Open Food Facts חיפוש לפי קוד
   try {
     const url =
       "https://world.openfoodfacts.org/cgi/search.pl?" +
@@ -167,18 +213,14 @@ async function lookupBarcode(barcode: string) {
     if (res.ok) {
       const json = (await res.json()) as { products?: Record<string, unknown>[] };
       for (const p of json.products ?? []) {
-        const code = String(p["code"] ?? "").replace(/\D/g, "");
-        if (code === clean) {
-          const food = mapOffProduct(p, clean);
-          if (food) return food;
-        }
+        if (String(p["code"] ?? "").replace(/\D/g, "") === clean) pushOff(p, 80);
       }
     }
   } catch {
     /* continue */
   }
 
-  // 3) USDA branded by gtinUpc
+  // 4) USDA — מועיל למותגים בינלאומיים; פחות למוצרים ישראליים
   try {
     const key = process.env.USDA_API_KEY || "DEMO_KEY";
     const url =
@@ -205,7 +247,7 @@ async function lookupBarcode(barcode: string) {
         const name = String(p["description"] ?? "").trim();
         if (!name || calories <= 0) continue;
         const brand = String(p["brandOwner"] ?? p["brandName"] ?? "").trim();
-        return {
+        hits.push({
           name:
             brand && !name.toLowerCase().includes(brand.toLowerCase())
               ? `${name} · ${brand}`
@@ -216,14 +258,19 @@ async function lookupBarcode(barcode: string) {
           carbs: +nutrient([1005]).toFixed(1),
           fat: +nutrient([1004]).toFixed(1),
           barcode: clean,
-        };
+          score: clean.startsWith("729") ? 40 : 70,
+        });
       }
     }
   } catch {
     /* continue */
   }
 
-  return null;
+  if (hits.length === 0) return null;
+  hits.sort((a, b) => b.score - a.score);
+  const best = hits[0]!;
+  const { score: _score, ...food } = best;
+  return food;
 }
 
 export const analyzeFoodImage = createServerFn({ method: "POST" })
@@ -264,11 +311,10 @@ export const analyzeFoodImage = createServerFn({ method: "POST" })
             result: {
               ...product,
               confidence: 1,
-              note: `זוהה ברקוד ${barcode}. הערכים נלקחו מהמאגר (Open Food Facts / USDA).`,
+              note: `זוהה ברקוד ${barcode}. הערכים נלקחו מהמאגר האמין ביותר שנמצא (עדיפות: Open Food Facts → USDA).`,
             },
           };
         }
-        // ברקוד זוהה אבל אין במאגר — משתמשים בערכים מהתווית/מהתמונה
         const hasMacros =
           num(parsed["calories"]) > 0 ||
           num(parsed["protein"]) > 0 ||
