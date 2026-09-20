@@ -1,15 +1,15 @@
 import { useSyncExternalStore } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseEnv, supabase } from "@/integrations/supabase/client";
-import { actions, getState, subscribeStore } from "./store";
 import type { AppState } from "./types";
 import {
-  SHARED_USER_ID,
   SHARED_USERNAME_HE,
   clearSharedSession,
   getActiveDisplayName,
+  getActiveUserId,
   hasSharedSession,
 } from "./sharedAccount";
+import { actions, getState, reloadStateForActiveUser, subscribeStore } from "./store";
 import { pullSharedCloud, pushSharedCloud } from "./sharedCloud";
 
 export type SyncStatus = "signed-out" | "loading" | "synced" | "saving" | "error";
@@ -69,7 +69,7 @@ async function pullShared() {
     error: null,
     shared: true,
     email: getActiveDisplayName() || SHARED_USERNAME_HE,
-    userId: SHARED_USER_ID,
+    userId: getActiveUserId(),
   });
   try {
     const remote = await pullSharedCloud();
@@ -97,7 +97,7 @@ async function pushShared() {
     error: null,
     shared: true,
     email: getActiveDisplayName() || SHARED_USERNAME_HE,
-    userId: SHARED_USER_ID,
+    userId: getActiveUserId(),
   });
   try {
     await pushSharedCloud(getState());
@@ -220,15 +220,17 @@ export function attachSharedSession() {
     timer = null;
   }
   dirty = false;
+  // טעינת נתונים נפרדים לפי המשתמש המחובר (דנה ≠ אורן)
+  reloadStateForActiveUser();
   setInfo({
     email: getActiveDisplayName() || SHARED_USERNAME_HE,
-    userId: SHARED_USER_ID,
+    userId: getActiveUserId(),
     status: "loading",
     error: null,
     shared: true,
   });
   void pullShared().then(() => {
-    if (info.shared && info.userId === SHARED_USER_ID) {
+    if (info.shared && info.userId === getActiveUserId()) {
       unsubscribeStore = subscribeStore(schedulePush);
     }
   });
