@@ -1,4 +1,4 @@
-/** Shared family account — UI credentials are fixed. */
+/** Family accounts — each user has separate local + cloud data. */
 
 export const SHARED_USERNAME_HE = "דנה";
 export const SHARED_USERNAME_EN = "DANA";
@@ -8,12 +8,14 @@ export const OREN_USERNAME_EN = "OREN";
 /** What the user types */
 export const SHARED_PASSWORD_UI = "1234";
 
-/** Internal Supabase email (not shown in UI) — one family cloud account */
+/** Internal Supabase email (legacy single account; still used for optional Supabase path) */
 export const SHARED_EMAIL = "dana@fitrack.sync";
 export const SHARED_PASSWORD_INTERNAL = "FitTrack-Dana-Sync-9xK2!";
 
-/** Fixed synthetic user id for shared mode (local + custom cloud). */
-export const SHARED_USER_ID = "00000000-0000-4000-a000-00000000dana";
+export const DANA_USER_ID = "00000000-0000-4000-a000-00000000dana";
+export const OREN_USER_ID = "00000000-0000-4000-a000-00000000oren";
+/** @deprecated use getActiveUserId() */
+export const SHARED_USER_ID = DANA_USER_ID;
 
 const SESSION_KEY = "fitrack_shared_session_v1";
 
@@ -42,9 +44,26 @@ export function isSharedPassword(raw: string): boolean {
   return raw === SHARED_PASSWORD_UI;
 }
 
-/** Display name based on what the user typed at login */
 export function displayNameFromUsername(raw: string): string {
   return isOrenUsername(raw) ? OREN_USERNAME_HE : SHARED_USERNAME_HE;
+}
+
+export function userIdForDisplayName(name: string | null | undefined): string {
+  return name === OREN_USERNAME_HE ? OREN_USER_ID : DANA_USER_ID;
+}
+
+export function storageKeyForUser(name: string | null | undefined): string {
+  return name === OREN_USERNAME_HE ? "fitrack-state-v2-oren" : "fitrack-state-v2-dana";
+}
+
+export function cloudCacheKeyForUser(name: string | null | undefined): string {
+  return name === OREN_USERNAME_HE
+    ? "fitrack_shared_cloud_cache_v1_oren"
+    : "fitrack_shared_cloud_cache_v1_dana";
+}
+
+export function getActiveUserId(): string {
+  return userIdForDisplayName(getActiveDisplayName());
 }
 
 export function displayNameForEmail(email: string | null | undefined): string {
