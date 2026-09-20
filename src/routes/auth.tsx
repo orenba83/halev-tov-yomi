@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/Stat";
 import { getSupabaseEnv, supabase } from "@/integrations/supabase/client";
 import {
+  OREN_USERNAME_HE,
   SHARED_PASSWORD_UI,
   SHARED_USERNAME_HE,
   clearSharedSession,
+  displayNameFromUsername,
   hasSharedSession,
   isSharedPassword,
   isSharedUsername,
@@ -70,14 +72,15 @@ function AuthPage() {
 
   const login = async () => {
     if (!isSharedUsername(username) || !isSharedPassword(password)) {
-      toast.error(`יש להזין ${SHARED_USERNAME_HE} וסיסמה ${SHARED_PASSWORD_UI}`);
+      toast.error(`יש להזין דנה או אורן וסיסמה ${SHARED_PASSWORD_UI}`);
       return;
     }
     setBusy(true);
     try {
-      setSharedSession();
+      const displayName = displayNameFromUsername(username);
+      setSharedSession(displayName);
       attachSharedSession();
-      toast.success("התחברת כ־דנה — הסנכרון בין המכשירים פעיל");
+      toast.success(`התחברת כ־${displayName} — הסנכרון בין המכשירים פעיל`);
       void navigate({ to: "/settings" });
     } catch (e) {
       clearSharedSession();
@@ -110,7 +113,7 @@ function AuthPage() {
 
       <Card className="space-y-4">
         <p className="text-xs text-muted-foreground">
-          שם משתמש: <b>דנה</b> (או DANA) · סיסמה: <b dir="ltr">1234</b>
+          שם משתמש: <b>דנה</b> / <b>אורן</b> · סיסמה: <b dir="ltr">1234</b>
         </p>
 
         <div className="space-y-1.5">
@@ -118,7 +121,7 @@ function AuthPage() {
           <Input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="דנה"
+            placeholder="דנה או אורן"
             autoComplete="username"
             disabled={busy}
             onKeyDown={(e) => e.key === "Enter" && void login()}
