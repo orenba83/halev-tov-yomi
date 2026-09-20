@@ -7,6 +7,7 @@ import {
   SHARED_USER_ID,
   SHARED_USERNAME_HE,
   clearSharedSession,
+  getActiveDisplayName,
   hasSharedSession,
 } from "./sharedAccount";
 import { pullSharedCloud, pushSharedCloud } from "./sharedCloud";
@@ -63,7 +64,13 @@ const friendlyError = (error: unknown) => {
 };
 
 async function pullShared() {
-  setInfo({ status: "loading", error: null, shared: true, email: SHARED_USERNAME_HE, userId: SHARED_USER_ID });
+  setInfo({
+    status: "loading",
+    error: null,
+    shared: true,
+    email: getActiveDisplayName() || SHARED_USERNAME_HE,
+    userId: SHARED_USER_ID,
+  });
   try {
     const remote = await pullSharedCloud();
     const state = remote?.state;
@@ -85,7 +92,13 @@ async function pullShared() {
 }
 
 async function pushShared() {
-  setInfo({ status: "saving", error: null, shared: true, email: SHARED_USERNAME_HE, userId: SHARED_USER_ID });
+  setInfo({
+    status: "saving",
+    error: null,
+    shared: true,
+    email: getActiveDisplayName() || SHARED_USERNAME_HE,
+    userId: SHARED_USER_ID,
+  });
   try {
     await pushSharedCloud(getState());
     dirty = false;
@@ -208,7 +221,7 @@ export function attachSharedSession() {
   }
   dirty = false;
   setInfo({
-    email: SHARED_USERNAME_HE,
+    email: getActiveDisplayName() || SHARED_USERNAME_HE,
     userId: SHARED_USER_ID,
     status: "loading",
     error: null,
