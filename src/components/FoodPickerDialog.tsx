@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Camera, Clock, Heart, ImagePlus, Loader2, MessageSquareText, Plus, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -529,7 +529,7 @@ export function FoodPickerDialog({
   );
 }
 
-function FoodList({
+const FoodList = memo(function FoodList({
   items,
   selected,
   onSelect,
@@ -560,9 +560,9 @@ function FoodList({
       {!items.length && <p className="py-6 text-center text-sm text-muted-foreground">לא נמצאו תוצאות</p>}
     </div>
   );
-}
+});
 
-export function EditEntryDialog({ entry, onClose }: { entry: LogEntry | null; onClose: () => void }) {
+export const EditEntryDialog = memo(function EditEntryDialog({ entry, onClose }: { entry: LogEntry | null; onClose: () => void }) {
   const [f, setF] = useState({ name: "", grams: "", calories: "", protein: "", carbs: "", fat: "" });
   const [id, setId] = useState<string | null>(null);
 
@@ -640,4 +640,4 @@ export function EditEntryDialog({ entry, onClose }: { entry: LogEntry | null; on
       </DialogContent>
     </Dialog>
   );
-}
+});

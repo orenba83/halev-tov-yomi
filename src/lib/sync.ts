@@ -49,6 +49,7 @@ export function useSyncInfo(): SyncInfo {
 let started = false;
 let suppress = false;
 let dirty = false;
+let busy = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let unsubscribeStore: (() => void) | null = null;
 
@@ -64,14 +65,16 @@ const friendlyError = (error: unknown) => {
 };
 
 async function pullShared() {
-  setInfo({
-    status: "loading",
-    error: null,
-    shared: true,
-    email: getActiveDisplayName() || SHARED_USERNAME_HE,
-    userId: getActiveUserId(),
-  });
+  if (busy) return false;
+  busy = true;
   try {
+    setInfo({
+      status: "loading",
+      error: null,
+      shared: true,
+      email: getActiveDisplayName() || SHARED_USERNAME_HE,
+      userId: getActiveUserId(),
+    });
     const remote = await pullSharedCloud();
     const state = remote?.state;
     if (state && Array.isArray((state as AppState).entries)) {
@@ -88,18 +91,22 @@ async function pullShared() {
   } catch (e) {
     setInfo({ status: "error", error: friendlyError(e) });
     return false;
+  } finally {
+    busy = false;
   }
 }
 
 async function pushShared() {
-  setInfo({
-    status: "saving",
-    error: null,
-    shared: true,
-    email: getActiveDisplayName() || SHARED_USERNAME_HE,
-    userId: getActiveUserId(),
-  });
+  if (busy) return false;
+  busy = true;
   try {
+    setInfo({
+      status: "saving",
+      error: null,
+      shared: true,
+      email: getActiveDisplayName() || SHARED_USERNAME_HE,
+      userId: getActiveUserId(),
+    });
     await pushSharedCloud(getState());
     dirty = false;
     setInfo({ status: "synced", lastSyncedAt: Date.now(), error: null });
@@ -107,61 +114,75 @@ async function pushShared() {
   } catch (e) {
     setInfo({ status: "error", error: friendlyError(e) });
     return false;
+  } finally {
+    busy = false;
   }
 }
 
 async function pull(userId: string) {
   if (info.shared) return pullShared();
+  if (busy) return false;
   if (!getSupabaseEnv()) {
     setInfo({ status: "error", error: "סנכרון בענן לא מוגדר (חסרים משתני סביבה של Supabase)." });
     return false;
   }
-  setInfo({ status: "loading", error: null });
-  const { data, error } = await supabase
-    .from("user_state")
-    .select("state, updated_at")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) {
-    const msg = friendlyError(error);
-    console.error("[sync] pull failed", error);
-    setInfo({ status: "error", error: msg });
-    return false;
-  }
-  const remote = data?.state as AppState | undefined;
-  if (remote && Array.isArray(remote.entries)) {
-    if (!dirty) {
-      suppress = true;
-      actions.importState(remote);
-      suppress = false;
+  busy = true;
+  try {
+    setInfo({ status: "loading", error: null });
+    const { data, error } = await supabase
+      .from("user_state")
+      .select("state, updated_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) {
+      const msg = friendlyError(error);
+      console.error("[sync] pull failed", error);
+      setInfo({ status: "error", error: msg });
+      return false;
     }
-    dirty = false;
-    setInfo({ status: "synced", lastSyncedAt: Date.now(), error: null });
-    return true;
+    const remote = data?.state as AppState | undefined;
+    if (remote && Array.isArray(remote.entries)) {
+      if (!dirty) {
+        suppress = true;
+        actions.importState(remote);
+        suppress = false;
+      }
+      dirty = false;
+      setInfo({ status: "synced", lastSyncedAt: Date.now(), error: null });
+      return true;
+    }
+    return push(userId);
+  } finally {
+    busy = false;
   }
-  return push(userId);
 }
 
 async function push(userId: string) {
   if (info.shared) return pushShared();
+  if (busy) return false;
   if (!getSupabaseEnv()) {
     setInfo({ status: "error", error: "סנכרון בענן לא מוגדר (חסרים משתני סביבה של Supabase)." });
     return false;
   }
-  setInfo({ status: "saving", error: null });
-  const { error } = await supabase.from("user_state").upsert(
-    { user_id: userId, state: getState() as never, updated_at: new Date().toISOString() },
-    { onConflict: "user_id" },
-  );
-  if (error) {
-    const msg = friendlyError(error);
-    console.error("[sync] push failed", error);
-    setInfo({ status: "error", error: msg });
-    return false;
+  busy = true;
+  try {
+    setInfo({ status: "saving", error: null });
+    const { error } = await supabase.from("user_state").upsert(
+      { user_id: userId, state: getState() as never, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" },
+    );
+    if (error) {
+      const msg = friendlyError(error);
+      console.error("[sync] push failed", error);
+      setInfo({ status: "error", error: msg });
+      return false;
+    }
+    dirty = false;
+    setInfo({ status: "synced", lastSyncedAt: Date.now(), error: null });
+    return true;
+  } finally {
+    busy = false;
   }
-  dirty = false;
-  setInfo({ status: "synced", lastSyncedAt: Date.now(), error: null });
-  return true;
 }
 
 function schedulePush() {
