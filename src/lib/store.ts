@@ -14,6 +14,19 @@ import type {
   WeightEntry,
 } from "./types";
 
+export type {
+  AppState,
+  ChatMessage,
+  DayMode,
+  Food,
+  LogEntry,
+  MacroGoals,
+  MeasurementEntry,
+  Settings,
+  WaterEntry,
+  WeightEntry,
+};
+
 const LEGACY_KEY = "fitrack-state-v2";
 
 function currentKey(): string {
@@ -24,7 +37,7 @@ export const todayKey = () => toKey(new Date());
 export const toKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-export const uid = () => Math.random().toString(36).slice(2, 10);
+export const uid = () => crypto.randomUUID();
 
 /** מספר ימי שמירה */
 export const KEEP_DAYS = 90;
@@ -130,6 +143,7 @@ function migrate(raw: any): AppState {
 let state: AppState = seed();
 let loaded = false;
 const listeners = new Set<() => void>();
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
 function load() {
   if (loaded || typeof window === "undefined") return;
@@ -150,15 +164,19 @@ function load() {
 
 function persist() {
   if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(currentKey(), JSON.stringify(state));
-  } catch {
-    /* ignore */
-  }
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try {
+      window.localStorage.setItem(currentKey(), JSON.stringify(state));
+    } catch {
+      /* ignore */
+    }
+    persistTimer = null;
+  }, 300);
 }
 
 function set(updater: (s: AppState) => AppState) {
-  state = updater(state);
+  state = prune(updater(state));
   persist();
   listeners.forEach((l) => l());
 }
@@ -302,7 +320,10 @@ export const actions = {
   },
   addChat(msg: Omit<ChatMessage, "id">) {
     const id = uid();
-    set((s) => ({ ...s, chat: [...s.chat, { ...msg, id }] }));
+    set((s) => ({
+      ...s,
+      chat: [...s.chat, { ...msg, id }].slice(-100),
+    }));
     return id;
   },
   updateChat(id: string, patch: Partial<ChatMessage>) {
@@ -319,12 +340,24 @@ export const actions = {
   },
 };
 
+let lastCustomFoods: Food[] | null = null;
+let cachedAllFoods: Food[] | null = null;
+
 export function allFoods(s: AppState): Food[] {
-  return [...s.customFoods, ...GLOBAL_FOODS];
+  if (lastCustomFoods === s.customFoods && cachedAllFoods) return cachedAllFoods;
+  const result = [...s.customFoods, ...GLOBAL_FOODS];
+  lastCustomFoods = s.customFoods;
+  cachedAllFoods = result;
+  return result;
 }
 
+let lastTotalsState: AppState | null = null;
+let lastTotalsDate: string | null = null;
+let cachedTotals: ReturnType<typeof dayTotals> | null = null;
+
 export function dayTotals(s: AppState, date: string) {
-  return s.entries
+  if (lastTotalsState === s && lastTotalsDate === date && cachedTotals) return cachedTotals;
+  const result = s.entries
     .filter((e) => e.date === date)
     .reduce(
       (acc, e) => ({
@@ -335,10 +368,23 @@ export function dayTotals(s: AppState, date: string) {
       }),
       { calories: 0, protein: 0, carbs: 0, fat: 0 },
     );
+  lastTotalsState = s;
+  lastTotalsDate = date;
+  cachedTotals = result;
+  return result;
 }
 
+let lastWaterState: AppState | null = null;
+let lastWaterDate: string | null = null;
+let cachedWater: ReturnType<typeof dayWater> | null = null;
+
 export function dayWater(s: AppState, date: string) {
-  return s.water.filter((w) => w.date === date).reduce((a, w) => a + w.ml, 0);
+  if (lastWaterState === s && lastWaterDate === date && cachedWater) return cachedWater;
+  const result = s.water.filter((w) => w.date === date).reduce((a, w) => a + w.ml, 0);
+  lastWaterState = s;
+  lastWaterDate = date;
+  cachedWater = result;
+  return result;
 }
 
 export function getDayMode(s: AppState, date: string): DayMode {

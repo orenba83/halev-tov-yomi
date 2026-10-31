@@ -35,6 +35,7 @@ import {
   heDayLabel,
   todayKey,
   useStore,
+  type LogEntry,
 } from "@/lib/store";
 import { MEALS, type DayMode, type MealKey } from "@/lib/types";
 
@@ -70,6 +71,16 @@ function Dashboard() {
   const waterPct =
     settings.waterGoal > 0 ? Math.min(100, (water / settings.waterGoal) * 100) : 0;
 
+  const entriesByMeal = useMemo<Record<MealKey, LogEntry[]>>(() => {
+    const byMeal: Record<MealKey, LogEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [] };
+    for (const e of state.entries) {
+      if (e.date === date) {
+        byMeal[e.meal].push(e);
+      }
+    }
+    return byMeal;
+  }, [state.entries, date]);
+
   const weightData = useMemo(
     () => state.weights.slice(-7).map((w) => ({ name: heDayLabel(w.date), value: w.value })),
     [state.weights],
@@ -80,7 +91,7 @@ function Dashboard() {
       : 0;
 
   const nextMeal =
-    MEALS.find((m) => !state.entries.some((e) => e.date === date && e.meal === m.key)) ?? MEALS[3]!;
+    MEALS.find((m) => entriesByMeal[m.key].length === 0) ?? MEALS[3]!;
 
   const onModeChange = (value: string) => {
     const mode = value as DayMode;
@@ -189,17 +200,16 @@ function Dashboard() {
       <Card className="space-y-2">
         <h2 className="font-bold">פירוט לפי ארוחות</h2>
         {MEALS.map((m) => {
-          const t = state.entries
-            .filter((e) => e.date === date && e.meal === m.key)
-            .reduce(
-              (a, e) => ({
-                calories: a.calories + e.calories,
-                protein: a.protein + e.protein,
-                carbs: a.carbs + e.carbs,
-                fat: a.fat + e.fat,
-              }),
-              { calories: 0, protein: 0, carbs: 0, fat: 0 },
-            );
+          const items = entriesByMeal[m.key];
+          const t = items.reduce(
+            (a, e) => ({
+              calories: a.calories + e.calories,
+              protein: a.protein + e.protein,
+              carbs: a.carbs + e.carbs,
+              fat: a.fat + e.fat,
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0 },
+          );
           return (
             <Link
               key={m.key}

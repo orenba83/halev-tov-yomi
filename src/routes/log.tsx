@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -28,6 +28,7 @@ import {
   todayKey,
   toKey,
   useStore,
+  type LogEntry,
 } from "@/lib/store";
 import { MEALS, type DayMode, type MealKey } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,16 @@ function DailyLog() {
     setPickerMeal(meal);
     setPickerOpen(true);
   };
+
+  const entriesByMeal = useMemo<Record<MealKey, LogEntry[]>>(() => {
+    const byMeal: Record<MealKey, LogEntry[]> = { breakfast: [], lunch: [], dinner: [], snack: [] };
+    for (const e of state.entries) {
+      if (e.date === date) {
+        byMeal[e.meal].push(e);
+      }
+    }
+    return byMeal;
+  }, [state.entries, date]);
 
   return (
     <div className="space-y-5">
@@ -183,7 +194,7 @@ function DailyLog() {
 
       <div className="space-y-3">
         {MEALS.map((m, i) => {
-          const items = state.entries.filter((e) => e.date === date && e.meal === m.key);
+          const items = entriesByMeal[m.key];
           const cal = items.reduce((a, e) => a + e.calories, 0);
           const Icon = MEAL_ICONS[i] ?? Sunrise;
           const iconBg = MEAL_ICON_BG[i] ?? MEAL_ICON_BG[0];
