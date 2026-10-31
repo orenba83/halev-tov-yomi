@@ -130,6 +130,9 @@ function RootComponent() {
         <Outlet />
       </AppShell>
       <Toaster position="top-center" richColors />
+      <div className="fixed bottom-4 left-4 text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded border border-border/50 backdrop-blur-sm z-50">
+        גירסה מעודכנת
+      </div>
     </QueryClientProvider>
   );
 }
