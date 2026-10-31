@@ -37,7 +37,10 @@ function MealScreen() {
   const [scan, setScan] = useState(false);
   const [editing, setEditing] = useState<LogEntry | null>(null);
 
-  const items = state.entries.filter((e) => e.date === date && e.meal === mealKey);
+  const items = useMemo(
+    () => state.entries.filter((e) => e.date === date && e.meal === mealKey),
+    [state.entries, date, mealKey],
+  );
 
   /** Unique recent items by name+grams (last 12), for one-tap re-add */
   const recentFromHistory = useMemo(() => {

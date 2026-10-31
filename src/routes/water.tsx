@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Droplets, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/Stat";
@@ -40,7 +40,10 @@ function WaterScreen() {
   const total = dayWater(state, date);
   const goal = state.settings.waterGoal;
   const pct = Math.min(100, Math.round((total / goal) * 100));
-  const items = state.water.filter((w) => w.date === date);
+  const items = useMemo(
+    () => state.water.filter((w) => w.date === date),
+    [state.water, date],
+  );
 
   const addCustom = () => {
     const n = Number(custom);
